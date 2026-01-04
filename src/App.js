@@ -96,6 +96,7 @@ const INITIAL_TIERS = {
 const HQ_TABS = [
     { id: 'report', label: '營運總表', icon: PieChart },
     { id: 'stores', label: '分店營運', icon: Store },
+    { id: 'bookings', label: '預約訂位', icon: ClipboardList },
     { id: 'employees', label: '員工管理', icon: UserCog },
     { id: 'menu', label: '菜單方案', icon: Utensils },
     { id: 'crm', label: '會員資料', icon: Users },
@@ -596,7 +597,7 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
             setShowCart(false); // 送出後關閉購物車
             setIsSending(false); 
         }
-        
+
     // ★★★ 渲染購物車介面 (Modal) ★★★
     if (showCart) {
         return (
@@ -1464,6 +1465,51 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
         </div>
     );
 };
+
+const BookingPage = ({ bookings, setBookings, currentStoreId, onOpenTable }) => {
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [time, setTime] = useState('');
+    const [adults, setAdults] = useState(2);
+    
+    // 新增訂位
+    const handleAddBooking = () => {
+        const newBooking = { id: Date.now(), name, phone, time, adults, storeId: currentStoreId, status: 'pending' };
+        setBookings([...bookings, newBooking]);
+        setName(''); setPhone(''); // 清空
+    };
+
+    return (
+        <div className="p-8 bg-gray-100 h-full overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">📅 {currentStoreId === '001' ? '七賢店' : '楠梓店'} 預約訂位簿</h2>
+            {/* 這裡讓員工可以手動輸入訂位 */}
+            <div className="bg-white p-6 rounded-xl shadow mb-8 flex gap-4 items-end">
+                <div><label className="text-sm block">客人姓名</label><input className="border p-2 rounded" value={name} onChange={e=>setName(e.target.value)}/></div>
+                <div><label className="text-sm block">電話</label><input className="border p-2 rounded" value={phone} onChange={e=>setPhone(e.target.value)}/></div>
+                <div><label className="text-sm block">時間</label><input type="time" className="border p-2 rounded" value={time} onChange={e=>setTime(e.target.value)}/></div>
+                <button onClick={handleAddBooking} className="bg-blue-600 text-white px-6 py-2 rounded font-bold">新增預約</button>
+            </div>
+
+            {/* 訂位清單 */}
+            <div className="grid grid-cols-1 gap-4">
+                {bookings.filter(b => b.storeId === currentStoreId).map(b => (
+                    <div key={b.id} className="bg-white p-4 rounded-xl shadow flex justify-between items-center border-l-8 border-blue-500">
+                        <div>
+                            <span className="text-xl font-bold mr-4">{b.time}</span>
+                            <span className="font-bold">{b.name} ({b.adults}位)</span>
+                            <div className="text-sm text-gray-500">{b.phone}</div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => alert('請去桌位圖選一桌，然後選擇此客人')} className="bg-green-100 text-green-700 px-4 py-2 rounded font-bold">客人報到</button>
+                            <button onClick={() => setBookings(bookings.filter(x=>x.id!==b.id))} className="text-red-400 p-2">刪除</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // --- 總部後台 (HQDashboard) - 完整修復版 ---
 const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, storeEmployees, setStoreEmployees, clockLogs, members, setMembers, coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers }) => {
   const [currentTab, setCurrentTab] = useState('report'); 
@@ -2513,10 +2559,15 @@ return (
             <div className="w-24 bg-gray-900 text-white flex flex-col items-center py-6 gap-8 shadow-xl z-10">
                 <div className="mb-4"><div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center font-bold text-xl">野</div></div>
                 <nav className="flex flex-col gap-6 w-full">
-                    {['home', 'menu', 'member', 'clockin', 'settings'].map(view => (
+                    {['home', 'menu', 'member', 'booking', 'clockin', 'settings'].map(view => (
                         <button key={view} onClick={() => setCurrentView(view)} className={`flex flex-col items-center gap-1 p-2 ${currentView === view ? 'text-orange-400 border-r-4 border-orange-400' : 'text-gray-400'}`}>
-                            {view === 'home' && <Home size={28} />} {view === 'menu' && <ClipboardList size={28} />} {view === 'member' && <Users size={28} />} {view === 'clockin' && <Clock size={28} />} {view === 'settings' && <Settings size={28} />}
-                            <span className="text-xs">{{home:'首頁', menu:'工作台', member:'會員', clockin:'打卡', settings:'設定'}[view]}</span>
+                            {view === 'home' && <Home size={28} />} 
+                            {view === 'menu' && <ClipboardList size={28} />} 
+                            {view === 'member' && <Users size={28} />} 
+                            {view === 'booking' && <ClipboardList size={28} />} {/* 這是新加的訂位圖標 */}
+                            {view === 'clockin' && <Clock size={28} />} 
+                            {view === 'settings' && <Settings size={28} />}
+                            <span className="text-xs">{{home:'首頁', menu:'工作台', member:'會員', booking:'訂位', clockin:'打卡', settings:'設定'}[view]}</span>
                         </button>
                     ))}
                 </nav>
@@ -2543,6 +2594,7 @@ return (
                     {/* ★★★ 傳遞 setCloudPrinters 給 SettingsPage ★★★ */}
                     {currentView === 'settings' && <SettingsPage printers={printers} setPrinters={setPrinters} onLogout={onLogout} onResetData={handleResetData} currentStoreId={currentStore.id} setCloudPrinters={setCloudPrinters} />}
                     {currentView === 'member' && <MemberPage memberAppSettings={memberAppSettings} members={members} onUpdateMember={handleUpdateMember} coupons={coupons} addLog={addMemberLog} currentStoreName={currentStore.name} />}
+                    {currentView === 'booking' && <BookingPage bookings={bookings} setBookings={setBookings} currentStoreId={currentStore.id} />}
                     {currentView === 'clockin' && <ClockInPage employees={storeEmployees[currentStore.id] || []} clockStatus={empClockStatus} onClockUpdate={handleClockUpdate} />}
                 </div>
                 {selectedTable && <TableModal currentStoreId={currentStore.id} selectedTable={selectedTable} onClose={() => setSelectedTable(null)} onOpenTable={handleOpenTable} onRequestCheckout={handleRequestCheckout} diningPlans={diningPlans} tables={tables} setTables={setTables} printers={printers} />}
@@ -2594,6 +2646,7 @@ export default function App() {
   const [storesConfig] = useFirebaseState('pos_data', 'stores_config', INITIAL_STORES_CONFIG); 
   const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
   const [storeEmployees] = useFirebaseState('pos_data', 'employees', INITIAL_STORE_EMPLOYEES);
+  const [bookings, setBookings] = useFirebaseState('pos_data', 'bookings', []);
   const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
   const [coupons, setCoupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
   const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
