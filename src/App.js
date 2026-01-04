@@ -48,10 +48,24 @@ const INITIAL_MENU_ITEMS = [
 const INITIAL_STOCK_STATUS = { '001': {}, '002': {}, '003': {} };
 const INITIAL_MEMBER_APP_SETTINGS = { announcement: '🎉 本月壽星優惠中！', promoColor: 'bg-orange-500', quickLinks: [], lineRichMenu: 'typeA' };
 
-const INITIAL_PRINTERS = [ 
-    { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.176', type: 'receipt', status: 'unknown' }, 
-    { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.180', type: 'kitchen', status: 'unknown' } 
-];
+// --- 這裡定義各分店精確的 IP 配置 ---
+const BRANCH_PRINTER_CONFIGS = {
+  '001': [ // 七賢店
+    { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.147', type: 'receipt', status: 'unknown' },
+    { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.115', type: 'kitchen', status: 'unknown' }
+  ],
+  '003': [ // 楠梓店
+    { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.176', type: 'receipt', status: 'unknown' },
+    { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.180', type: 'kitchen', status: 'unknown' }
+  ]
+};
+
+// 取得目前的網址參數中的 storeId (用於預設載入)
+const urlParams = new URLSearchParams(window.location.search);
+const currentStoreIdFromUrl = urlParams.get('store') || '003';
+
+// 根據當前分店載入對應 IP，如果找不到就預設用楠梓的
+const INITIAL_PRINTERS = BRANCH_PRINTER_CONFIGS[currentStoreIdFromUrl] || BRANCH_PRINTER_CONFIGS['003'];
 
 const INITIAL_MEMBERS_DB = [ { phone: '0912345678', name: '王大明', level: 'Tin', points: 0, totalSpending: 0, birthday: '12-05', lastVisit: '2023-10-15', isLineBound: true, birthdayRedeemed: false, joinDate: '2023-01-10', items: [], pointLogs: [] } ];
 const INITIAL_STORE_EMPLOYEES = { '001': [{id: 1, name: '店長', password: '000'}], '002': [], '003': [] };
@@ -551,10 +565,23 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
             return t; 
         })); 
 
-        // 再列印
-        const API_BASE = STORE_URLS[storeId] || ''; 
-        const targetIp = printerConfig?.find(p => p.type === 'kitchen')?.ip || '192.168.1.180'; 
-        const printData = { type: 'kitchen', tableId: tableId, content: cart.map(item => ({ name: item.name, count: item.count })), targetIp: targetIp };
+// 再列印
+        // ★★★ 智慧切換開始 ★★★
+        const currentStoreId = storeId || '003';
+        // 根據店號給予正確的廚房 IP 備案 (七賢店用 115，其餘預設 180)
+        const fallbackIp = currentStoreId === '001' ? '192.168.1.115' : '192.168.1.180';
+
+        const API_BASE = STORE_URLS[currentStoreId] || ''; 
+        // 優先抓雲端設定，抓不到才用上面判斷的 fallbackIp
+        const targetIp = printerConfig?.find(p => p.type === 'kitchen')?.ip || fallbackIp; 
+        // ★★★ 智慧切換結束 ★★★
+
+        const printData = { 
+            type: 'kitchen', 
+            tableId: tableId, 
+            content: cart.map(item => ({ name: item.name, count: item.count })), 
+            targetIp: targetIp 
+        };
         
         try { 
             const controller = new AbortController();
@@ -569,8 +596,7 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
             setShowCart(false); // 送出後關閉購物車
             setIsSending(false); 
         }
-    };
-
+        
     // ★★★ 渲染購物車介面 (Modal) ★★★
     if (showCart) {
         return (
