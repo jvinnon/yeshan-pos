@@ -2597,9 +2597,10 @@ return (
                     {currentView === 'booking' && <BookingPage bookings={bookings} setBookings={setBookings} currentStoreId={currentStore.id} />}
                     {currentView === 'clockin' && <ClockInPage employees={storeEmployees[currentStore.id] || []} clockStatus={empClockStatus} onClockUpdate={handleClockUpdate} />}
                 </div>
+                
                 {selectedTable && <TableModal currentStoreId={currentStore.id} selectedTable={selectedTable} onClose={() => setSelectedTable(null)} onOpenTable={handleOpenTable} onRequestCheckout={handleRequestCheckout} diningPlans={diningPlans} tables={tables} setTables={setTables} printers={printers} />}
                 
-                {/* ★★★ 核心修復：把 printers 傳給結帳視窗，這樣它才知道要傳給誰！ ★★★ */}
+                {/* ★★★ 核心修復：把 printers 傳給結帳視窗 ★★★ */}
                 {checkoutTable && <CheckoutModal 
                     table={tables.find(t=>t.id===checkoutTable.id)||checkoutTable}
                     storeId={currentStore.id} 
@@ -2610,7 +2611,7 @@ return (
                     members={members} 
                     slotPrizes={slotPrizes} 
                     onUpdateMember={handleUpdateMember}
-                    printers={printers} // ★★★ 這一行救活了錢箱 ★★★
+                    printers={printers} 
                 />}
             </div>
         </div>
