@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
 import { db } from './firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import QRCode from 'qrcode';
@@ -17,7 +17,8 @@ const INITIAL_STORES_CONFIG = {
 const STORE_URLS = {
     '001': 'https://yeshan-qixian.ngrok.app',    
     '002': 'https://yeshan-fengshan.ngrok.app', 
-    '003': 'https://yeshan-nanzi.ngrok.app'      
+    '003': 'https://yeshan-nanzi.ngrok.app',     // <--- 這裡要加上逗號
+    'branch3': 'https://yeshan-nanzi.ngrok.app'
 };
 
 const INITIAL_DINING_PLANS = [
@@ -54,6 +55,10 @@ const BRANCH_PRINTER_CONFIGS = {
     { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.115', type: 'kitchen', status: 'unknown' }
   ],
   '003': [
+    { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.176', type: 'receipt', status: 'unknown' },
+    { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.180', type: 'kitchen', status: 'unknown' }
+  ],
+  'branch3': [
     { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.176', type: 'receipt', status: 'unknown' },
     { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.180', type: 'kitchen', status: 'unknown' }
   ]
@@ -377,6 +382,9 @@ const OrderHistoryModal = ({ orders, onClose }) => {
     ); 
 };
 
+// =======================================================
+// ★★★ 修正版 CustomerOrderPage：加入右上角行銷標語 ★★★
+// =======================================================
 const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categories, setTables, tables, printers, stockStatus, onGoToMember, printerConfig }) => {
     const [cart, setCart] = useState([]);
     const [addedId, setAddedId] = useState(null);
@@ -470,7 +478,22 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
 
     return (
         <div className="flex flex-col h-screen bg-gray-100 relative">
-            <div className="bg-gray-900 text-white p-4 shadow-md sticky top-0 z-10"><div className="flex justify-between items-center mb-1"><div><h1 className="font-bold text-lg">桌號 {tableId}</h1><div className="text-xs opacity-70">方案: {currentPlan.name}</div></div><button onClick={onGoToMember} className="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg flex items-center gap-1 text-sm font-bold border border-orange-400 text-white"><UserCheck size={16} /> 會員中心</button></div><div className="flex justify-between items-end border-t border-gray-700 pt-1 mt-1"><div><div className="font-bold text-orange-400 text-xs">最後加點</div><div className="text-sm">{formatTime(currentTable.startTime + 90*60*1000)}</div></div><button onClick={() => setShowHistory(true)} className="text-xs text-gray-400 underline flex items-center gap-1"><ClipboardList size={12}/> 已點紀錄</button></div></div>
+            <div className="bg-gray-900 text-white p-4 shadow-md sticky top-0 z-10">
+                <div className="flex justify-between items-center mb-1">
+                    <div><h1 className="font-bold text-lg">桌號 {tableId}</h1><div className="text-xs opacity-70">方案: {currentPlan.name}</div></div>
+                    
+                    {/* ★★★ 這裡加入了行銷標語 ★★★ */}
+                    <div className="flex items-center">
+                         <div className="text-[10px] bg-yellow-400 text-red-800 font-bold px-2 py-1 rounded-l-lg animate-pulse mr-[-5px] z-0 shadow-sm">
+                            加入會員<br/>滿千抽獎
+                        </div>
+                        <button onClick={onGoToMember} className="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded-lg flex items-center gap-1 text-sm font-bold border border-orange-400 text-white z-10 shadow-lg relative">
+                            <UserCheck size={16} /> 會員中心
+                        </button>
+                    </div>
+                </div>
+                <div className="flex justify-between items-end border-t border-gray-700 pt-1 mt-1"><div><div className="font-bold text-orange-400 text-xs">最後加點</div><div className="text-sm">{formatTime(currentTable.startTime + 90*60*1000)}</div></div><button onClick={() => setShowHistory(true)} className="text-xs text-gray-400 underline flex items-center gap-1"><ClipboardList size={12}/> 已點紀錄</button></div>
+            </div>
             <div className="flex overflow-x-auto bg-white p-4 shadow-md gap-3 sticky top-[88px] z-10 no-scrollbar"><style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style> {['All', ...categories].map(cat => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-6 py-3 rounded-full font-bold text-lg whitespace-nowrap flex-shrink-0 transition-transform active:scale-95 ${activeCategory === cat ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>{cat}</button>))}</div>
             <div className="flex-grow overflow-y-auto p-4 pb-32"><div className="grid grid-cols-2 gap-4">{filteredItems.map(item => (<button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-3 rounded-xl shadow-sm flex flex-col items-center gap-2 relative ${addedId === item.id ? 'ring-2 ring-green-500' : ''}`}><div className="w-full h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-300 font-bold text-2xl">{item.name[0]}</div><div className="text-center"><div className="font-bold text-gray-800">{item.name}</div>{item.price > 0 && <div className="text-orange-600 text-xs font-bold">+${item.price}</div>}</div></button>))}</div></div>
             {cart.length > 0 && (<div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.1)] p-4 rounded-t-2xl z-20"><button onClick={() => setShowCart(true)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-xl shadow-lg flex items-center justify-center gap-2"><ShoppingCart size={24} />查看購物車 ({cart.length})</button></div>)}
@@ -630,13 +653,24 @@ const DailyReportPage = ({ currentStore }) => {
         storeId: currentStore.id,
         storeName: currentStore.name,
         status: 'draft', 
-        incomes: [], // ★ 修改點1：這裡改成空陣列，不預設項目
+        incomes: [], 
         expenses: [],
         notes: '',
         lastUpdated: Date.now()
     });
 
-    // 計算總計
+    // ★★★★★ 關鍵修正：加上這段安全檢查！ ★★★★★
+    // 如果資料還沒抓下來，先顯示轉圈圈，不然下面計算會當機
+    if (!reportData) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center bg-gray-100 text-gray-500">
+                <Loader className="animate-spin mb-4" size={48} />
+                <p className="text-xl font-bold">正在同步雲端日報...</p>
+            </div>
+        );
+    }
+
+    // 計算總計 (因為上面已經擋掉了 null，這裡就可以放心執行了)
     const totalIncome = (reportData.incomes || []).reduce((sum, i) => sum + (parseInt(i.amount) || 0), 0);
     const totalExpense = (reportData.expenses || []).reduce((sum, i) => sum + (parseInt(i.amount) || 0), 0);
     const netTotal = totalIncome - totalExpense;
@@ -799,11 +833,12 @@ const DailyReportPage = ({ currentStore }) => {
 };
 
 // =======================================================
-// ★★★ 修正後的 MemberPage (加入 isHQ 權限控管) ★★★
+// ★★★ 修正版 MemberPage：修復總部新增會員與優惠券功能 ★★★
 // =======================================================
-const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLog, currentStoreName, isHQ }) => {
+// 注意：這裡新增了 setMembers, setCoupons 到 props 接收
+const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, coupons, setCoupons, addLog, currentStoreName, isHQ }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('list'); // list, settings, coupons
+    const [activeTab, setActiveTab] = useState('list');
     const [selectedMember, setSelectedMember] = useState(null);
     const [adjustPoints, setAdjustPoints] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
@@ -811,13 +846,54 @@ const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLo
     // APP 設定狀態
     const [tempAppSettings, setTempAppSettings] = useState(memberAppSettings);
     const [newLinkName, setNewLinkName] = useState('');
-    const [newLinkUrl, setNewLinkUrl] = useState('');
+    
+    // 新增會員用狀態
+    const [isAddingMember, setIsAddingMember] = useState(false);
+    const [newMemberData, setNewMemberData] = useState({ name: '', phone: '' });
+
+    // 新增優惠券用狀態
+    const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+    const [newCouponData, setNewCouponData] = useState({ name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '' });
 
     // 搜尋邏輯
     const filteredMembers = (members || []).filter(m => 
         (m.name && m.name.includes(searchTerm)) || 
         (m.phone && m.phone.includes(searchTerm))
     );
+
+    // ★★★ 功能：手動新增會員 ★★★
+    const handleAddMember = () => {
+        if (!newMemberData.name || !newMemberData.phone) return alert('請輸入姓名與電話');
+        if (members.some(m => m.phone === newMemberData.phone)) return alert('此電話號碼已存在！');
+        
+        const newMember = {
+            ...newMemberData,
+            level: 'Tin', points: 0, totalSpending: 0,
+            joinDate: new Date().toISOString().split('T')[0],
+            items: [], pointLogs: [], isLineBound: false
+        };
+        setMembers(prev => [...prev, newMember]); // 寫入資料庫
+        setIsAddingMember(false);
+        setNewMemberData({ name: '', phone: '' });
+        alert('✅ 會員新增成功！');
+    };
+
+    // ★★★ 功能：手動新增優惠券 ★★★
+    const handleAddCoupon = () => {
+        if (!newCouponData.name || !newCouponData.code) return alert('請輸入名稱與代碼');
+        const newCoupon = {
+            ...newCouponData,
+            id: Date.now(),
+            pointCost: parseInt(newCouponData.pointCost),
+            value: parseInt(newCouponData.value),
+            limit: false,
+            expiryDate: '2025-12-31' // 預設期限，可再優化
+        };
+        setCoupons(prev => [...prev, newCoupon]); // 寫入資料庫
+        setIsAddingCoupon(false);
+        setNewCouponData({ name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '' });
+        alert('✅ 優惠券新增成功！');
+    };
 
     // 點數調整
     const handleAdjustPoints = (type) => {
@@ -827,14 +903,13 @@ const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLo
         const amount = parseInt(adjustPoints);
         const finalAmount = type === 'add' ? amount : -amount;
         
-        // 1. 更新會員物件
         const newPoints = (selectedMember.points || 0) + finalAmount;
         if (newPoints < 0) return alert('扣除後點數不能為負！');
 
         const newLog = {
             id: Date.now(),
             amount: finalAmount,
-            expiry: Date.now() + (365 * 24 * 60 * 60 * 1000), // 預設一年效期
+            expiry: Date.now() + (365 * 24 * 60 * 60 * 1000),
             used: false
         };
 
@@ -844,14 +919,12 @@ const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLo
             pointLogs: [...(selectedMember.pointLogs || []), newLog]
         };
 
-        // 2. 寫入資料庫
         onUpdateMember(updatedMember);
         setSelectedMember(updatedMember);
 
-        // 3. 寫入操作日誌
         addLog({
             storeName: currentStoreName,
-            staffName: '店員操作', // 之後可改為實際員工名
+            staffName: '店員操作',
             memberName: selectedMember.name,
             memberPhone: selectedMember.phone,
             action: type === 'add' ? `人工補點: ${adjustReason}` : `人工扣點: ${adjustReason}`,
@@ -863,15 +936,7 @@ const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLo
         alert('✅ 點數調整成功！');
     };
 
-    // 儲存 APP 設定
-    const handleSaveSettings = () => {
-        // 這裡需要透過上層傳入的 setMemberAppSettings 來儲存，
-        // 但因為 props 沒傳 set 函數，通常是透過 Firebase 直接存，
-        // 這裡模擬儲存成功
-        alert('✅ APP 設定已更新 (模擬)');
-        // 實際應用需呼叫：setMemberAppSettings(tempAppSettings);
-    };
-
+    const handleSaveSettings = () => { alert('✅ APP 設定已更新 (模擬)'); };
     const handleAddQuickLink = () => {
         if(!newLinkName) return;
         const newLinks = [...(tempAppSettings.quickLinks || []), { name: newLinkName, url: 'action' }];
@@ -881,234 +946,92 @@ const MemberPage = ({ memberAppSettings, members, onUpdateMember, coupons, addLo
 
     return (
         <div className="flex h-full bg-gray-100 overflow-hidden">
-            {/* 左側選單 */}
             <div className="w-64 bg-white border-r flex flex-col">
                 <div className="p-6 border-b">
-                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Users className="text-orange-500"/> 會員中心
-                    </h2>
-                    {/* 依照 isHQ 顯示不同副標題 */}
-                    <p className="text-xs text-gray-500 mt-1">
-                        {isHQ ? '總部 CRM 管理後台' : '分店查詢系統'}
-                    </p>
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Users className="text-orange-500"/> 會員中心</h2>
+                    <p className="text-xs text-gray-500 mt-1">{isHQ ? '總部 CRM 管理後台' : '分店查詢系統'}</p>
                 </div>
                 <nav className="flex-grow p-4 space-y-2">
-                    {/* 1. 所有人都能看 */}
-                    <button onClick={() => setActiveTab('list')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'list' ? 'bg-orange-50 text-orange-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <Search size={20}/> 會員查詢 / 管理
-                    </button>
-                    
-                    {/* 2. 只有總部 (HQ) 才能看 */}
-                    {isHQ && (
-                        <>
-                            <button onClick={() => setActiveTab('settings')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <Settings size={20}/> APP 介面設定
-                            </button>
-                            <button onClick={() => setActiveTab('coupons')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'coupons' ? 'bg-green-50 text-green-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <Ticket size={20}/> 優惠券管理
-                            </button>
-                        </>
-                    )}
+                    <button onClick={() => setActiveTab('list')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'list' ? 'bg-orange-50 text-orange-600' : 'text-gray-600 hover:bg-gray-50'}`}><Search size={20}/> 會員查詢 / 管理</button>
+                    {isHQ && (<><button onClick={() => setActiveTab('settings')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Settings size={20}/> APP 介面設定</button><button onClick={() => setActiveTab('coupons')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'coupons' ? 'bg-green-50 text-green-600' : 'text-gray-600 hover:bg-gray-50'}`}><Ticket size={20}/> 優惠券管理</button></>)}
                 </nav>
             </div>
-
-            {/* 右側內容區 */}
             <div className="flex-grow p-8 overflow-y-auto">
-                
-                {/* 1. 會員列表模式 */}
                 {activeTab === 'list' && (
                     <div className="space-y-6">
-                        {/* 搜尋列 */}
                         <div className="bg-white p-4 rounded-xl shadow-sm flex gap-4">
-                            <div className="relative flex-grow">
-                                <Search className="absolute left-3 top-3 text-gray-400" size={20}/>
-                                <input 
-                                    className="w-full pl-10 p-3 border rounded-xl outline-none focus:border-orange-500 font-bold text-lg" 
-                                    placeholder="輸入手機號碼或姓名..." 
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <button className="bg-gray-800 text-white px-6 rounded-xl font-bold flex items-center gap-2">
-                                <UserPlus size={20}/> 新增會員
-                            </button>
+                            <div className="relative flex-grow"><Search className="absolute left-3 top-3 text-gray-400" size={20}/><input className="w-full pl-10 p-3 border rounded-xl outline-none focus:border-orange-500 font-bold text-lg" placeholder="輸入手機號碼或姓名..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+                            {/* ★★★ 新增按鈕邏輯修正 ★★★ */}
+                            <button onClick={() => setIsAddingMember(true)} className="bg-gray-800 text-white px-6 rounded-xl font-bold flex items-center gap-2"><UserPlus size={20}/> 新增會員</button>
                         </div>
-
-                        {/* 列表 */}
+                        {/* 新增會員輸入框 (簡易版) */}
+                        {isAddingMember && (
+                            <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200 animate-fade-in-up">
+                                <h3 className="font-bold text-orange-800 mb-2">✨ 建立新會員資料</h3>
+                                <div className="flex gap-2">
+                                    <input className="p-2 rounded border flex-1" placeholder="姓名" value={newMemberData.name} onChange={e => setNewMemberData({...newMemberData, name: e.target.value})} />
+                                    <input className="p-2 rounded border flex-1" placeholder="手機" value={newMemberData.phone} onChange={e => setNewMemberData({...newMemberData, phone: e.target.value})} />
+                                    <button onClick={handleAddMember} className="bg-orange-600 text-white px-4 rounded font-bold">確認建立</button>
+                                    <button onClick={() => setIsAddingMember(false)} className="bg-gray-300 text-gray-600 px-4 rounded font-bold">取消</button>
+                                </div>
+                            </div>
+                        )}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50 text-gray-500 font-bold border-b">
-                                    <tr>
-                                        <th className="p-4">姓名</th>
-                                        <th className="p-4">手機</th>
-                                        <th className="p-4">等級</th>
-                                        <th className="p-4">點數</th>
-                                        <th className="p-4">累積消費</th>
-                                        <th className="p-4">最近來店</th>
-                                        <th className="p-4 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredMembers.length === 0 ? (
-                                        <tr><td colSpan="7" className="p-8 text-center text-gray-400">查無會員資料</td></tr>
-                                    ) : (
-                                        filteredMembers.map(m => (
-                                            <tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
-                                                <td className="p-4 font-bold">{m.name}</td>
-                                                <td className="p-4 font-mono">{m.phone}</td>
-                                                <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td>
-                                                <td className="p-4 text-orange-600 font-bold">{m.points}</td>
-                                                <td className="p-4">${m.totalSpending?.toLocaleString()}</td>
-                                                <td className="p-4 text-sm text-gray-500">{m.lastVisit || '無'}</td>
-                                                <td className="p-4 text-right">
-                                                    <button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
+                                <thead className="bg-gray-50 text-gray-500 font-bold border-b"><tr><th className="p-4">姓名</th><th className="p-4">手機</th><th className="p-4">等級</th><th className="p-4">點數</th><th className="p-4">累積消費</th><th className="p-4 text-right">操作</th></tr></thead>
+                                <tbody>{filteredMembers.length === 0 ? <tr><td colSpan="7" className="p-8 text-center text-gray-400">查無會員資料</td></tr> : filteredMembers.map(m => (<tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{m.name}</td><td className="p-4 font-mono">{m.phone}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td><td className="p-4 text-orange-600 font-bold">{m.points}</td><td className="p-4">${m.totalSpending?.toLocaleString()}</td><td className="p-4 text-right"><button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button></td></tr>))}</tbody>
                             </table>
                         </div>
                     </div>
                 )}
-
-                {/* 2. APP 設定模式 (加上 isHQ 保護) */}
                 {activeTab === 'settings' && isHQ && (
                     <div className="flex gap-8">
                         <div className="flex-1 space-y-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm">
-                                <h3 className="font-bold text-lg mb-4">首頁公告設定</h3>
-                                <textarea 
-                                    className="w-full border p-3 rounded-xl h-24 mb-2" 
-                                    value={tempAppSettings.announcement}
-                                    onChange={(e) => setTempAppSettings({...tempAppSettings, announcement: e.target.value})}
-                                />
-                                <div className="text-xs text-gray-400">顯示在顧客手機首頁的跑馬燈或公告區塊。</div>
-                            </div>
-                            
-                            <div className="bg-white p-6 rounded-xl shadow-sm">
-                                <h3 className="font-bold text-lg mb-4">主題配色</h3>
-                                <div className="flex gap-3">
-                                    {['bg-orange-500', 'bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600'].map(color => (
-                                        <button 
-                                            key={color} 
-                                            onClick={() => setTempAppSettings({...tempAppSettings, promoColor: color})}
-                                            className={`w-10 h-10 rounded-full ${color} ${tempAppSettings.promoColor === color ? 'ring-4 ring-gray-300' : ''}`}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-xl shadow-sm">
-                                <h3 className="font-bold text-lg mb-4">快速連結按鈕</h3>
-                                <div className="flex gap-2 mb-2">
-                                    <input className="border p-2 rounded flex-grow" placeholder="按鈕名稱" value={newLinkName} onChange={e=>setNewLinkName(e.target.value)}/>
-                                    <button onClick={handleAddQuickLink} className="bg-gray-800 text-white px-4 rounded font-bold">新增</button>
-                                </div>
-                                <div className="space-y-2">
-                                    {tempAppSettings.quickLinks && tempAppSettings.quickLinks.map((link, i) => (
-                                        <div key={i} className="flex justify-between border p-2 rounded bg-gray-50">
-                                            <span>{link.name}</span>
-                                            <button onClick={() => {
-                                                const newLinks = [...tempAppSettings.quickLinks];
-                                                newLinks.splice(i, 1);
-                                                setTempAppSettings({...tempAppSettings, quickLinks: newLinks});
-                                            }} className="text-red-500 text-sm">刪除</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm"><h3 className="font-bold text-lg mb-4">首頁公告設定</h3><textarea className="w-full border p-3 rounded-xl h-24 mb-2" value={tempAppSettings.announcement} onChange={(e) => setTempAppSettings({...tempAppSettings, announcement: e.target.value})} /><div className="text-xs text-gray-400">顯示在顧客手機首頁的跑馬燈。</div></div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm"><h3 className="font-bold text-lg mb-4">主題配色</h3><div className="flex gap-3">{['bg-orange-500', 'bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600'].map(color => (<button key={color} onClick={() => setTempAppSettings({...tempAppSettings, promoColor: color})} className={`w-10 h-10 rounded-full ${color} ${tempAppSettings.promoColor === color ? 'ring-4 ring-gray-300' : ''}`} />))}</div></div>
                             <button onClick={handleSaveSettings} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">儲存設定</button>
                         </div>
-                        {/* 預覽區 */}
-                        <div className="w-[320px] flex-shrink-0">
-                            <div className="sticky top-4">
-                                <h3 className="text-center font-bold text-gray-400 mb-2">即時預覽</h3>
-                                <CustomerMobileAppSimulator appSettings={tempAppSettings} />
-                            </div>
-                        </div>
+                        <div className="w-[320px] flex-shrink-0"><div className="sticky top-4"><h3 className="text-center font-bold text-gray-400 mb-2">即時預覽</h3><CustomerMobileAppSimulator appSettings={tempAppSettings} /></div></div>
                     </div>
                 )}
-
-                {/* 3. 優惠券管理 (加上 isHQ 保護) */}
                 {activeTab === 'coupons' && isHQ && (
                     <div className="space-y-4">
-                         <div className="bg-yellow-100 p-4 rounded-xl text-yellow-800 border-l-4 border-yellow-500 mb-4">
-                             <h4 className="font-bold">🚧 功能說明</h4>
-                             <p className="text-sm">此處管理的優惠券將顯示在顧客手機端的「點數兌換」區。</p>
-                         </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {coupons.map(coupon => (
-                                <div key={coupon.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">
-                                        {coupon.pointCost} 點
-                                    </div>
-                                    <h3 className="font-bold text-xl mb-1">{coupon.name}</h3>
-                                    <p className="text-sm text-gray-500 mb-4">{coupon.description}</p>
-                                    <div className="text-xs text-gray-400">
-                                        <div>代碼: {coupon.code}</div>
-                                        <div>效期: {coupon.expiryDate}</div>
-                                    </div>
-                                </div>
-                            ))}
-                            <button className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:bg-white hover:border-gray-400 hover:text-gray-600 h-40 transition-all">
-                                <Plus size={32} />
-                                <span className="font-bold mt-2">新增優惠券</span>
-                            </button>
+                            {coupons.map(coupon => (<div key={coupon.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group"><div className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">{coupon.pointCost} 點</div><h3 className="font-bold text-xl mb-1">{coupon.name}</h3><p className="text-sm text-gray-500 mb-4">{coupon.description}</p><div className="text-xs text-gray-400"><div>代碼: {coupon.code}</div></div></div>))}
+                            {/* ★★★ 修正按鈕邏輯：開啟新增模式 ★★★ */}
+                            <button onClick={() => setIsAddingCoupon(true)} className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:bg-white hover:border-gray-400 hover:text-gray-600 h-40 transition-all"><Plus size={32} /><span className="font-bold mt-2">新增優惠券</span></button>
                          </div>
+                         {/* 新增優惠券輸入框 */}
+                         {isAddingCoupon && (
+                             <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                                 <div className="bg-white p-8 rounded-2xl w-96 animate-fade-in-up">
+                                    <h3 className="text-xl font-bold mb-4">新增兌換券</h3>
+                                    <div className="space-y-3">
+                                        <input className="w-full border p-2 rounded" placeholder="優惠券名稱" value={newCouponData.name} onChange={e=>setNewCouponData({...newCouponData, name:e.target.value})}/>
+                                        <input className="w-full border p-2 rounded" placeholder="所需點數" type="number" value={newCouponData.pointCost} onChange={e=>setNewCouponData({...newCouponData, pointCost:e.target.value})}/>
+                                        <input className="w-full border p-2 rounded" placeholder="核銷代碼 (英文數字)" value={newCouponData.code} onChange={e=>setNewCouponData({...newCouponData, code:e.target.value})}/>
+                                        <input className="w-full border p-2 rounded" placeholder="描述" value={newCouponData.description} onChange={e=>setNewCouponData({...newCouponData, description:e.target.value})}/>
+                                        <select className="w-full border p-2 rounded" value={newCouponData.type} onChange={e=>setNewCouponData({...newCouponData, type:e.target.value})}><option value="item">兌換商品 (免費)</option><option value="cash">現金折抵</option><option value="percent">折扣 (%)</option></select>
+                                        {(newCouponData.type === 'cash' || newCouponData.type === 'percent') && <input className="w-full border p-2 rounded" placeholder="數值 (元/%)" type="number" value={newCouponData.value} onChange={e=>setNewCouponData({...newCouponData, value:e.target.value})}/>}
+                                        <div className="flex gap-2 mt-4">
+                                            <button onClick={handleAddCoupon} className="flex-1 bg-green-600 text-white py-2 rounded font-bold">建立</button>
+                                            <button onClick={()=>setIsAddingCoupon(false)} className="flex-1 bg-gray-300 py-2 rounded font-bold">取消</button>
+                                        </div>
+                                    </div>
+                                 </div>
+                             </div>
+                         )}
                     </div>
                 )}
             </div>
-
-            {/* 會員詳情 Modal */}
             {selectedMember && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="bg-gray-900 p-6 text-white flex justify-between items-start">
-                            <div>
-                                <h2 className="text-3xl font-bold">{selectedMember.name}</h2>
-                                <p className="opacity-80 font-mono">{selectedMember.phone}</p>
-                            </div>
-                            <button onClick={() => setSelectedMember(null)} className="bg-white/20 p-2 rounded-full hover:bg-white/30"><X/></button>
-                        </div>
+                        <div className="bg-gray-900 p-6 text-white flex justify-between items-start"><div><h2 className="text-3xl font-bold">{selectedMember.name}</h2><p className="opacity-80 font-mono">{selectedMember.phone}</p></div><button onClick={() => setSelectedMember(null)} className="bg-white/20 p-2 rounded-full hover:bg-white/30"><X/></button></div>
                         <div className="flex-grow overflow-y-auto p-6">
-                            <div className="flex gap-4 mb-6">
-                                <div className="flex-1 bg-orange-50 p-4 rounded-xl border border-orange-100 text-center">
-                                    <div className="text-sm text-gray-500 font-bold">目前點數</div>
-                                    <div className="text-4xl font-bold text-orange-600">{selectedMember.points}</div>
-                                </div>
-                                <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 text-center">
-                                    <div className="text-sm text-gray-500 font-bold">累積消費</div>
-                                    <div className="text-2xl font-bold text-gray-800">${selectedMember.totalSpending}</div>
-                                </div>
-                                <div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 text-center">
-                                    <div className="text-sm text-gray-500 font-bold">入會日期</div>
-                                    <div className="text-lg font-bold text-gray-800">{selectedMember.joinDate}</div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white border rounded-xl p-6 mb-6">
-                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Edit3 size={18}/> 點數調整 (人工增減)</h3>
-                                <div className="flex gap-2 mb-2">
-                                    <input type="number" className="border p-2 rounded flex-1" placeholder="輸入點數" value={adjustPoints} onChange={e=>setAdjustPoints(e.target.value)}/>
-                                    <input type="text" className="border p-2 rounded flex-[2]" placeholder="原因 (例: 補償、活動贈送)" value={adjustReason} onChange={e=>setAdjustReason(e.target.value)}/>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleAdjustPoints('add')} className="flex-1 bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">補發點數 (+)</button>
-                                    <button onClick={() => handleAdjustPoints('subtract')} className="flex-1 bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700">扣除點數 (-)</button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="font-bold text-lg mb-2 text-gray-700">持有票券</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {(!selectedMember.items || selectedMember.items.length === 0) ? <span className="text-gray-400 text-sm">無</span> : selectedMember.items.map((item, idx) => (
-                                        <span key={idx} className={`px-3 py-1 rounded text-sm border ${item.redeemed ? 'bg-gray-100 text-gray-400 decoration-line-through' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                            {item.name} {item.redeemed && '(已用)'}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
+                            <div className="flex gap-4 mb-6"><div className="flex-1 bg-orange-50 p-4 rounded-xl border border-orange-100 text-center"><div className="text-sm text-gray-500 font-bold">目前點數</div><div className="text-4xl font-bold text-orange-600">{selectedMember.points}</div></div><div className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 text-center"><div className="text-sm text-gray-500 font-bold">累積消費</div><div className="text-2xl font-bold text-gray-800">${selectedMember.totalSpending}</div></div></div>
+                            <div className="bg-white border rounded-xl p-6 mb-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Edit3 size={18}/> 點數調整 (人工增減)</h3><div className="flex gap-2 mb-2"><input type="number" className="border p-2 rounded flex-1" placeholder="輸入點數" value={adjustPoints} onChange={e=>setAdjustPoints(e.target.value)}/><input type="text" className="border p-2 rounded flex-[2]" placeholder="原因 (例: 補償、活動贈送)" value={adjustReason} onChange={e=>setAdjustReason(e.target.value)}/></div><div className="flex gap-2"><button onClick={() => handleAdjustPoints('add')} className="flex-1 bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">補發點數 (+)</button><button onClick={() => handleAdjustPoints('subtract')} className="flex-1 bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700">扣除點數 (-)</button></div></div>
+                            <div><h3 className="font-bold text-lg mb-2 text-gray-700">持有票券</h3><div className="flex flex-wrap gap-2">{(!selectedMember.items || selectedMember.items.length === 0) ? <span className="text-gray-400 text-sm">無</span> : selectedMember.items.map((item, idx) => (<span key={idx} className={`px-3 py-1 rounded text-sm border ${item.redeemed ? 'bg-gray-100 text-gray-400 decoration-line-through' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>{item.name} {item.redeemed && '(已用)'}</span>))}</div></div>
                         </div>
                     </div>
                 </div>
@@ -1507,6 +1430,7 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
     const handleVerifyModify = () => { if (authPassword !== '88888') { alert('密碼錯誤！'); setAuthPassword(''); return; } setShowModifyConfirm(false); setAuthPassword(''); initEditData(); setIsEditing(true); };
     const getDuration = () => { if (!liveTable.startTime) return 0; return Math.floor((Date.now() - liveTable.startTime) / 60000); };
     const groupedOrders = []; let currentBatch = []; let lastBatchId = null; (liveTable.orders || []).forEach(o => { if (lastBatchId && o.batchId !== lastBatchId) { groupedOrders.push({ batchId: lastBatchId, items: currentBatch }); currentBatch = []; } currentBatch.push(o); lastBatchId = o.batchId; }); if (currentBatch.length > 0) groupedOrders.push({ batchId: lastBatchId, items: currentBatch }); groupedOrders.reverse();
+    const screenOrderUrl = `${window.location.origin}?mode=customer&store=${currentStoreId}&table=${selectedTable.id}&token=${liveTable.token || ''}`;
 
     // --- 渲染 ---
     if (showChangeTable) { const emptyTables = tables.filter(t => t.status === 'empty'); return (<div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]"><div className="bg-white p-6 rounded-2xl w-96"><h3 className="text-xl font-bold mb-4 flex items-center gap-2"><MoveRight/> 請選擇新桌號</h3><div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto mb-4">{emptyTables.map(t => ( <button key={t.id} onClick={() => handleChangeTable(t.id)} className="bg-green-100 text-green-800 py-3 rounded-lg font-bold hover:bg-green-200 border border-green-300">{t.id}</button> ))}</div><button onClick={() => setShowChangeTable(false)} className="w-full bg-gray-200 py-3 rounded-lg font-bold">取消返回</button></div></div>); }
@@ -1525,18 +1449,35 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
                 <div className="p-6 overflow-y-auto flex-grow">
                     {isOccupied ? (
                         <div className="space-y-6">
+                            {/* 上半部：資訊卡片 */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100"><div className="text-orange-400 text-xs font-bold uppercase mb-1">用餐方案</div><div className="text-xl font-bold text-gray-800">{diningPlans.find(p=>p.id===liveTable.plan)?.name || liveTable.plan}</div><div className="text-sm text-gray-500 mt-1">{liveTable.adults}大 {liveTable.children}小</div></div>
                                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100"><div className="text-blue-400 text-xs font-bold uppercase mb-1">用餐時間</div><div className="text-3xl font-bold text-blue-600">{getDuration()}<span className="text-sm">分</span></div><div className="text-xs text-gray-400 mt-1">入場: {new Date(liveTable.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div></div>
                             </div>
+
+                            {/* 中間：已點內容 */}
                             <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
                                 <div className="bg-gray-100 p-3 flex justify-between items-center border-b border-gray-200"><h3 className="font-bold text-gray-700 flex items-center gap-2"><ShoppingCart size={16}/> 已點內容</h3><span className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">共 {(liveTable.orders || []).length} 道</span></div>
                                 <div className="max-h-48 overflow-y-auto p-2">{(liveTable.orders && liveTable.orders.length > 0) ? <div className="space-y-1">{liveTable.orders.map((item, idx) => (<div key={idx} className="flex justify-between items-center p-2 hover:bg-white rounded-lg transition-colors"><div className="font-bold text-gray-700">{item.name}</div><div className="flex items-center gap-3"><span className="text-sm text-gray-500">x{item.count}</span>{item.price > 0 && <span className="text-sm text-red-500 font-bold">${item.price}</span>}</div></div>))}</div> : <div className="text-center py-8 text-gray-400 italic text-sm">尚無點餐紀錄</div>}</div>
                             </div>
+
+                            {/* 下半部：QR Code 區塊 (★修正處：已移入 space-y-6 內部) */}
                             <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-4 flex items-center gap-4">
                                 <div className="bg-gray-800 text-white p-3 rounded-lg"><QrCode size={24}/></div>
-                                <div className="flex-grow overflow-hidden"><div className="text-xs text-gray-400 font-bold">顧客點餐連結 (Token)</div><div className="text-xs text-gray-800 truncate font-mono bg-gray-100 p-1 rounded mt-1 select-all">{liveTable.token ? `${window.location.origin}/order/${liveTable.token}` : '尚未生成'}</div></div>
-                                <a href={`/order/${liveTable.token}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold text-sm whitespace-nowrap hover:underline">開啟</a>
+                                <div className="flex-grow overflow-hidden">
+                                    <div className="text-xs text-gray-400 font-bold">顧客點餐連結 (Token)</div>
+                                    <div className="text-xs text-gray-800 truncate font-mono bg-gray-100 p-1 rounded mt-1 select-all">
+                                        {liveTable.token ? screenOrderUrl : '尚未生成'}
+                                    </div>
+                                </div>
+                                <a 
+                                    href={screenOrderUrl} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="text-blue-600 font-bold text-sm whitespace-nowrap hover:underline"
+                                >
+                                    開啟
+                                </a>
                             </div>
                         </div>
                     ) : (
@@ -2238,33 +2179,16 @@ const HQDailyReportView = ({ storesConfig }) => {
 };
 
 // =======================================================
-// ★★★ 2. (子元件) 進階營運儀表板 (已修復：強制對應店名) ★★★
+// ★★★ 2. (子元件) 進階營運儀表板 (含篩選/熱銷/小費) ★★★
 // =======================================================
 const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) => {
     const [filterStore, setFilterStore] = useState('All'); 
-    const [filterType, setFilterType] = useState('all');
-    
+    const [filterType, setFilterType] = useState('today');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [viewOrderModal, setViewOrderModal] = useState(null);
 
-    // ★★★ 關鍵修復：強制店名翻譯機 ★★★
-    // 就算雲端資料遺失，這裡也會強制把 003 顯示為 楠梓店
-    const getStoreName = (id) => {
-        // 1. 先試試看雲端設定有沒有
-        if (storesConfig && storesConfig[id] && storesConfig[id].name) return storesConfig[id].name;
-        // 2. 如果雲端壞了，直接讀取原始設定 (Hardcoded)
-        if (INITIAL_STORES_CONFIG && INITIAL_STORES_CONFIG[id]) return INITIAL_STORES_CONFIG[id].name;
-        // 3. 如果還是沒有，手動對應 (最後防線)
-        if (id === '001') return '七賢總店';
-        if (id === '002') return '鳳山旗艦店';
-        if (id === '003') return '楠梓分店';
-        return '未知分店 (' + id + ')';
-    };
-
-    // 1. 日期篩選邏輯
     const isDateMatch = (timestamp) => {
-        if (filterType === 'all') return true; 
         const date = new Date(timestamp);
         const dateStr = date.toLocaleDateString('en-CA');
         const todayStr = new Date().toLocaleDateString('en-CA');
@@ -2274,16 +2198,8 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
         return true;
     };
 
-    // 2. 資料過濾
     const filteredSales = (salesLogs || []).filter(log => (filterStore === 'All' || log.storeId === filterStore) && isDateMatch(log.timestamp));
     const filteredTips = (tipLogs || []).filter(tip => (filterStore === 'All' || tip.storeId === filterStore) && isDateMatch(tip.timestamp));
-
-    // 3. 計算各分店業績
-    const storeRevenue = {};
-    (salesLogs || []).forEach(log => {
-        if (!storeRevenue[log.storeId]) storeRevenue[log.storeId] = 0;
-        storeRevenue[log.storeId] += parseInt(log.amount) || 0;
-    });
 
     const totalRevenue = filteredSales.reduce((sum, log) => sum + (parseInt(log.amount) || 0), 0);
     const totalCount = filteredSales.length;
@@ -2300,7 +2216,7 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
         }
     });
     const bestSellers = Object.entries(itemStats).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
-    
+
     const empTipStats = {};
     filteredTips.forEach(tip => { if (!empTipStats[tip.empName]) empTipStats[tip.empName] = 0; empTipStats[tip.empName] += tip.amount; });
     const sortedTips = Object.entries(empTipStats).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount);
@@ -2310,67 +2226,17 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
 
     return (
         <div className="p-6 h-full overflow-y-auto bg-gray-50 font-sans">
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                {['001', '002', '003'].map(sid => (
-                    <div key={sid} className={`p-4 rounded-xl shadow-sm border-l-4 ${sid==='003' ? 'bg-orange-50 border-orange-500' : 'bg-white border-gray-300'}`}>
-                        <div className="text-xs text-gray-500 font-bold mb-1">{getStoreName(sid)} 總營收</div>
-                        <div className={`text-2xl font-bold ${sid==='003' ? 'text-orange-600' : 'text-gray-800'}`}>
-                            ${(storeRevenue[sid] || 0).toLocaleString()}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2"><Store size={18} className="text-gray-500"/><select className="border p-2 rounded-lg font-bold text-gray-700 outline-none cursor-pointer" value={filterStore} onChange={e=>setFilterStore(e.target.value)}><option value="All">全部分店</option>{Object.values(storesConfig).filter(s => s.type !== 'HQ').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                <div className="flex items-center gap-2"><Store size={18} className="text-gray-500"/><select className="border p-2 rounded-lg font-bold text-gray-700 outline-none" value={filterStore} onChange={e=>setFilterStore(e.target.value)}><option value="All">全部分店</option>{Object.values(storesConfig).filter(s => s.type !== 'HQ').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                 <div className="h-8 w-[1px] bg-gray-300 mx-2"></div>
-                <div className="flex bg-gray-100 p-1 rounded-lg">
-                    {[{id:'all', label:'全部歷史'}, {id:'today', label:'本日'}, {id:'month', label:'本月'}, {id:'custom', label:'自訂'}].map(mode => (
-                        <button key={mode.id} onClick={()=>setFilterType(mode.id)} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${filterType===mode.id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>{mode.label}</button>
-                    ))}
-                </div>
+                <div className="flex bg-gray-100 p-1 rounded-lg">{[{id:'today', label:'本日'}, {id:'month', label:'本月'}, {id:'custom', label:'自訂'}].map(mode => (<button key={mode.id} onClick={()=>setFilterType(mode.id)} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${filterType===mode.id ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{mode.label}</button>))}</div>
                 {filterType === 'custom' && (<div className="flex items-center gap-2 bg-white border p-1 rounded-lg px-3"><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-sm font-bold text-gray-600 outline-none"/><span className="text-gray-400">~</span><input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="text-sm font-bold text-gray-600 outline-none"/></div>)}
-                <div className="ml-auto text-xs text-gray-400">資料庫總筆數: {(salesLogs||[]).length} 筆</div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">{[ {t:'區間營業額',v:`$${totalRevenue.toLocaleString()}`,c:'text-blue-600',b:'bg-blue-50',i:DollarSign}, {t:'區間單數',v:`${totalCount} 筆`,c:'text-orange-600',b:'bg-orange-50',i:ClipboardList}, {t:'平均客單價',v:`$${avgTicket.toLocaleString()}`,c:'text-purple-600',b:'bg-purple-50',i:Percent}, {t:'總營收 (不含篩選)',v:`$${Object.values(storeRevenue).reduce((a,b)=>a+b,0).toLocaleString()}`,c:'text-green-600',b:'bg-green-50',i:Trophy} ].map((card,i)=>(<div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between"><div><div className="text-gray-400 text-xs font-bold mb-1">{card.t}</div><div className={`text-2xl font-bold ${card.c}`}>{card.v}</div></div><div className={`p-3 rounded-full ${card.b} ${card.c}`}><card.i size={24}/></div></div>))}</div>
-            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">{[ {t:'營業總額',v:`$${totalRevenue.toLocaleString()}`,c:'text-blue-600',b:'bg-blue-50',i:DollarSign}, {t:'銷售筆數',v:`${totalCount} 筆`,c:'text-orange-600',b:'bg-orange-50',i:ClipboardList}, {t:'平均客單價',v:`$${avgTicket.toLocaleString()}`,c:'text-purple-600',b:'bg-purple-50',i:Percent}, {t:'消費總額',v:`$${totalRevenue.toLocaleString()}`,c:'text-green-600',b:'bg-green-50',i:Trophy} ].map((card,i)=>(<div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between"><div><div className="text-gray-400 text-xs font-bold mb-1">{card.t}</div><div className={`text-2xl font-bold ${card.c}`}>{card.v}</div></div><div className={`p-3 rounded-full ${card.b} ${card.c}`}><card.i size={24}/></div></div>))}</div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
-                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700 flex items-center gap-2"><ClipboardList size={18}/> 交易明細 (由新到舊)</h3></div>
-                    <div className="flex-grow overflow-y-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100 text-gray-500 sticky top-0 z-10 font-bold">
-                                <tr>
-                                    <th className="p-3">日期時間</th> 
-                                    <th className="p-3">分店</th>
-                                    <th className="p-3">桌號</th>
-                                    <th className="p-3">支付</th>
-                                    <th className="p-3 text-right">金額</th>
-                                    <th className="p-3 text-center">管理</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredSales.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">無符合條件的交易</td></tr> : filteredSales.sort((a,b)=>b.timestamp-a.timestamp).map(log => (
-                                    <tr key={log.id} className="hover:bg-blue-50 transition-colors">
-                                        <td className="p-3">
-                                            <div className="text-xs font-bold text-gray-500">{new Date(log.timestamp).toLocaleDateString()}</div>
-                                            <div className="font-mono text-gray-800 text-sm">{new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                                        </td>
-                                        {/* ★★★ 這裡使用了 getStoreName 強制翻譯 ★★★ */}
-                                        <td className="p-3 text-gray-800 font-bold">
-                                            {getStoreName(log.storeId)}
-                                            <span className="text-xs text-gray-400 ml-1">({log.storeId})</span>
-                                        </td>
-                                        <td className="p-3 font-bold text-blue-600">{log.tableId || '櫃台'}</td>
-                                        <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{log.paymentMethod}</span></td>
-                                        <td className="p-3 text-right font-bold">${log.amount.toLocaleString()}</td>
-                                        <td className="p-3 flex justify-center gap-2"><button onClick={()=>setViewOrderModal(log)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><Utensils size={16}/></button><button onClick={()=>handleEdit(log)} className="p-1.5 text-orange-500 hover:bg-orange-100 rounded"><Edit3 size={16}/></button><button onClick={()=>handleDelete(log.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16}/></button></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700 flex items-center gap-2"><ClipboardList size={18}/> 交易明細</h3></div>
+                    <div className="flex-grow overflow-y-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-100 text-gray-500 sticky top-0 z-10 font-bold"><tr><th className="p-3">時間</th><th className="p-3">分店</th><th className="p-3">桌號</th><th className="p-3">支付</th><th className="p-3 text-right">金額</th><th className="p-3 text-center">管理</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredSales.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">無符合條件的交易</td></tr> : filteredSales.sort((a,b)=>b.timestamp-a.timestamp).map(log => (<tr key={log.id} className="hover:bg-blue-50 transition-colors"><td className="p-3 font-mono text-gray-600">{new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td><td className="p-3 text-gray-800">{storesConfig[log.storeId]?.name}</td><td className="p-3 font-bold text-blue-600">{log.tableId || '櫃台'}</td><td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{log.paymentMethod}</span></td><td className="p-3 text-right font-bold">${log.amount.toLocaleString()}</td><td className="p-3 flex justify-center gap-2"><button onClick={()=>setViewOrderModal(log)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><Utensils size={16}/></button><button onClick={()=>handleEdit(log)} className="p-1.5 text-orange-500 hover:bg-orange-100 rounded"><Edit3 size={16}/></button><button onClick={()=>handleDelete(log.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
                 </div>
                 <div className="space-y-6">
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-[240px] flex flex-col"><div className="p-4 border-b bg-gray-50"><h3 className="font-bold text-gray-700 flex items-center gap-2"><Trophy size={18} className="text-yellow-500"/> 本期熱銷排行</h3></div><div className="p-4 overflow-y-auto space-y-3">{bestSellers.length===0?<div className="text-center text-gray-400 text-sm mt-10">尚無數據</div>:bestSellers.map((item,i)=>(<div key={i} className="flex justify-between items-center text-sm"><div className="flex items-center gap-2"><div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${i===0?'bg-yellow-400':i===1?'bg-gray-400':i===2?'bg-orange-400':'bg-blue-200'}`}>{i+1}</div><span className="text-gray-700 font-bold">{item.name}</span></div><span className="text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{item.count} 份</span></div>))}</div></div>
@@ -2641,24 +2507,16 @@ const HQBookingManager = ({ bookings, storesConfig }) => {
 };
 
 // =======================================================
-// ★★★ 5. (主程式) 總部後台 - 最終修復版 (支援多區域桌號設定) ★★★
+// ★★★ 5. (主程式) 總部後台主入口 (完整整合版) ★★★
 // =======================================================
 const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, storeEmployees, setStoreEmployees, clockLogs, members, setMembers, coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings }) => {
-    const [activeTab, setActiveTab] = useState('stores'); // ★ 預設跳到分店管理讓您設定
+    const [activeTab, setActiveTab] = useState('report'); 
     const [selectedStoreForEmp, setSelectedStoreForEmp] = useState('001');
     const [newEmpName, setNewEmpName] = useState('');
     const [newEmpPwd, setNewEmpPwd] = useState('');
     const [qrModalEmp, setQrModalEmp] = useState(null); 
     const [editingStoreId, setEditingStoreId] = useState(null);
     const [tempStoreData, setTempStoreData] = useState({});
-
-    // ★★★ 新增：多區域設定專用的暫存狀態 ★★★
-    const [addPrefix, setAddPrefix] = useState('');
-    const [addCount, setAddCount] = useState('');
-
-    // ★★★ 打卡紀錄專用的篩選與排序狀態 ★★★
-    const [clockFilter, setClockFilter] = useState('All'); 
-    const [clockSort, setClockSort] = useState({ key: 'timestamp', dir: 'desc' });
 
     useEffect(() => {
         if (qrModalEmp) {
@@ -2672,67 +2530,13 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
 
     const handleAddEmployee = () => { if (!newEmpName || !newEmpPwd) return alert('請輸入完整資料'); const currentEmps = storeEmployees[selectedStoreForEmp] || []; if (currentEmps.some(e => e.password === newEmpPwd)) return alert('此密碼已被使用，請更換'); const newEmp = { id: Date.now(), name: newEmpName, password: newEmpPwd }; setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: [...currentEmps, newEmp] }); setNewEmpName(''); setNewEmpPwd(''); alert('員工新增成功！'); };
     const handleDeleteEmployee = (id) => { if (!window.confirm('確定要刪除此員工帳號嗎？')) return; setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: (storeEmployees[selectedStoreForEmp]||[]).filter(e => e.id !== id) }); };
-    
-    // 分店編輯邏輯
-    const startEditStore = (store) => { 
-        setEditingStoreId(store.id); 
-        // 確保 tableRanges 存在
-        setTempStoreData({ ...store, tableRanges: store.tableRanges || [] }); 
-    };
-    
-    // ★★★ 新增區域邏輯 ★★★
-    const handleAddRange = () => {
-        if (!addPrefix || !addCount) return alert("請輸入代號和數量！");
-        const newRange = { prefix: addPrefix.toUpperCase(), count: parseInt(addCount) };
-        setTempStoreData(prev => ({
-            ...prev,
-            tableRanges: [...(prev.tableRanges || []), newRange]
-        }));
-        setAddPrefix('');
-        setAddCount('');
-    };
-
-    // ★★★ 刪除區域邏輯 ★★★
-    const handleRemoveRange = (index) => {
-        const newRanges = [...tempStoreData.tableRanges];
-        newRanges.splice(index, 1);
-        setTempStoreData({ ...tempStoreData, tableRanges: newRanges });
-    };
-
-    const saveStoreChange = () => { 
-        // 為了相容舊邏輯，同時更新 tablePrefix/tableCount (取第一個 range 或預設)
-        const primaryRange = tempStoreData.tableRanges && tempStoreData.tableRanges.length > 0 ? tempStoreData.tableRanges[0] : {prefix: 'A', count: 0};
-        
-        setStoresConfig(prev => ({ 
-            ...prev, 
-            [editingStoreId]: {
-                ...tempStoreData,
-                // 自動計算總桌數顯示用
-                totalTables: (tempStoreData.tableRanges||[]).reduce((sum, r) => sum + r.count, 0)
-            } 
-        })); 
-        setEditingStoreId(null); 
-        alert('✅ 分店區域設定已更新！\n(請至分店端按「重置系統資料」以生成新桌號)'); 
-    };
-
-    const processedClockLogs = (clockLogs || [])
-        .filter(log => clockFilter === 'All' || log.storeId === clockFilter)
-        .sort((a, b) => {
-            let valA = a[clockSort.key];
-            let valB = b[clockSort.key];
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
-            if (valA < valB) return clockSort.dir === 'asc' ? -1 : 1;
-            if (valA > valB) return clockSort.dir === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-    const handleSort = (key) => { setClockSort(prev => ({ key: key, dir: (prev.key === key && prev.dir === 'desc') ? 'asc' : 'desc' })); };
+    const startEditStore = (store) => { setEditingStoreId(store.id); setTempStoreData({ ...store }); };
+    const saveStoreChange = () => { setStoresConfig(prev => ({ ...prev, [editingStoreId]: tempStoreData })); setEditingStoreId(null); alert('分店資料已更新！'); };
 
     return (
         <div className="flex h-screen bg-gray-100 font-sans">
             <div className="w-64 bg-gray-900 text-white flex flex-col shadow-xl z-20">
-                <div className="p-6 border-b border-gray-800"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xl">HQ</div><h1 className="text-xl font-bold">野饌總部</h1></div><div className="text-xs text-gray-500">中央管理系統 v3.1 (Multi-Zone)</div></div>
+                <div className="p-6 border-b border-gray-800"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xl">HQ</div><h1 className="text-xl font-bold">野饌總部</h1></div><div className="text-xs text-gray-500">中央管理系統 v2.8</div></div>
                 <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
                     <button onClick={() => setActiveTab('report')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'report' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><PieChart size={20}/> 營運總表</button>
                     <button onClick={() => setActiveTab('daily_reports')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'daily_reports' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><FileText size={20}/> 日報檢視</button>
@@ -2747,201 +2551,52 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
             <div className="flex-grow overflow-hidden relative">
                 {activeTab === 'report' && <HQReportDashboard salesLogs={salesLogs||[]} setSalesLogs={setSalesLogs} storesConfig={storesConfig} tipLogs={tipLogs||[]} />}
                 {activeTab === 'daily_reports' && <HQDailyReportView storesConfig={storesConfig} />}
-                
-                {/* ★★★ 分店管理 (大幅升級：支援多區域) ★★★ */}
-                {activeTab === 'stores' && (
-                    <div className="p-8 h-full overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-3xl font-bold text-gray-800">🏪 分店區域與桌號設定</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(store => (
-                                <div key={store.id} className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all ${editingStoreId === store.id ? 'border-purple-500 ring-2 ring-purple-100' : 'border-transparent'}`}>
-                                    
-                                    {/* 標題與操作按鈕 */}
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded text-sm">店號: {store.id}</div>
-                                        {editingStoreId === store.id ? (
-                                            <div className="flex gap-2">
-                                                <button onClick={saveStoreChange} className="text-green-600 bg-green-100 p-2 rounded hover:bg-green-200"><Save size={18}/></button>
-                                                <button onClick={()=>setEditingStoreId(null)} className="text-gray-400 bg-gray-100 p-2 rounded hover:bg-gray-200"><X size={18}/></button>
-                                            </div>
-                                        ) : (
-                                            <button onClick={()=>startEditStore(store)} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-gray-50 rounded"><Edit3 size={18}/></button>
-                                        )}
-                                    </div>
-
-                                    {/* 基本資料 */}
-                                    <div className="space-y-4 mb-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-400">分店名稱</label>
-                                            {editingStoreId === store.id ? 
-                                                <input className="w-full border-b-2 font-bold text-lg outline-none focus:border-purple-500" value={tempStoreData.name} onChange={e=>setTempStoreData({...tempStoreData, name: e.target.value})} /> : 
-                                                <div className="font-bold text-xl">{store.name}</div>
-                                            }
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-400">登入密碼</label>
-                                            {editingStoreId === store.id ? 
-                                                <input className="w-full border-b-2 font-mono text-lg outline-none focus:border-purple-500" value={tempStoreData.password} onChange={e=>setTempStoreData({...tempStoreData, password: e.target.value})} /> : 
-                                                <div className="font-mono text-lg text-gray-600">{store.password}</div>
-                                            }
-                                        </div>
-                                    </div>
-
-                                    {/* ★★★ 桌號區域設定 (重點修改) ★★★ */}
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                        <label className="text-xs font-bold text-gray-500 mb-2 block flex items-center gap-1"><HardDrive size={12}/> 桌位區域配置</label>
-                                        
-                                        {/* 顯示現有區域 */}
-                                        <div className="space-y-2 mb-3">
-                                            {((editingStoreId === store.id ? tempStoreData.tableRanges : store.tableRanges) || []).length === 0 ? (
-                                                <div className="text-sm text-gray-400 italic">尚未設定區域</div>
-                                            ) : (
-                                                ((editingStoreId === store.id ? tempStoreData.tableRanges : store.tableRanges) || []).map((range, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center bg-white p-2 rounded shadow-sm text-sm">
-                                                        <span className="font-bold text-gray-700">
-                                                            <span className="bg-blue-100 text-blue-700 px-1.5 rounded mr-1">{range.prefix}區</span> 
-                                                            {range.count} 桌
-                                                        </span>
-                                                        {editingStoreId === store.id && (
-                                                            <button onClick={() => handleRemoveRange(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
-                                                        )}
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-
-                                        {/* 新增區域介面 (只在編輯模式顯示) */}
-                                        {editingStoreId === store.id && (
-                                            <div className="flex gap-2 items-center mt-2 border-t pt-2 border-gray-200">
-                                                <input placeholder="代號 (如: A)" className="w-20 p-1 rounded border text-sm uppercase text-center" value={addPrefix} onChange={e=>setAddPrefix(e.target.value)} />
-                                                <input placeholder="桌數" type="number" className="w-16 p-1 rounded border text-sm text-center" value={addCount} onChange={e=>setAddCount(e.target.value)} />
-                                                <button onClick={handleAddRange} className="bg-blue-600 text-white p-1.5 rounded hover:bg-blue-700 flex-grow text-sm font-bold">新增</button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                
-                {activeTab === 'employees' && (
-                    <div className="p-8 h-full overflow-y-auto">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-800">👷 員工帳號與出勤</h2>
-                        
-                        <div className="flex gap-8 items-start mb-8">
-                            <div className="w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100">
-                                <div className="flex items-center gap-2 mb-6 text-indigo-600"><UserPlus size={24}/><h3 className="font-bold text-xl">新增員工</h3></div>
-                                <div className="space-y-5"><div><label className="block text-sm font-bold text-gray-500 mb-2">歸屬分店</label><select className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500" value={selectedStoreForEmp} onChange={e=>setSelectedStoreForEmp(e.target.value)}>{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div><div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div><button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button></div>
-                            </div>
-                            <div className="w-2/3">
-                                <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-600">{storesConfig[selectedStoreForEmp]?.name} - 員工名單</h3><span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">共 {(storeEmployees[selectedStoreForEmp]||[]).length} 人</span></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{(storeEmployees[selectedStoreForEmp]||[]).length === 0 && <div className="col-span-2 py-10 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">尚未建立員工資料</div>}{(storeEmployees[selectedStoreForEmp]||[]).map(emp=>(<div key={emp.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 border-indigo-500 group hover:shadow-md transition-shadow"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-bold">{emp.name.charAt(0)}</div><div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-400">密碼: {emp.password}</div></div></div><div className="flex gap-2"><button onClick={()=>setQrModalEmp(emp)} className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="顯示打賞 QR Code"><QrCode size={20}/></button><button onClick={()=>handleDeleteEmployee(emp.id)} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={20}/></button></div></div>))}</div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2"><Clock className="text-blue-600"/> 員工打卡出勤紀錄</h3>
-                                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg px-3">
-                                    <span className="text-gray-500 text-sm font-bold">篩選分店：</span>
-                                    <select className="bg-transparent font-bold outline-none text-gray-700 cursor-pointer" value={clockFilter} onChange={(e) => setClockFilter(e.target.value)}>
-                                        <option value="All">全部顯示</option>
-                                        {Object.values(storesConfig).filter(s => s.type !== 'HQ').map(s => ( <option key={s.id} value={s.id}>{s.name}</option> ))}
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50 text-gray-600 text-sm border-b select-none">
-                                        <tr>
-                                            <th className="p-3 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('timestamp')}>時間 {clockSort.key === 'timestamp' && (clockSort.dir === 'asc' ? '↑' : '↓')}</th>
-                                            <th className="p-3">分店</th>
-                                            <th className="p-3 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('empName')}>員工 {clockSort.key === 'empName' && (clockSort.dir === 'asc' ? '↑' : '↓')}</th>
-                                            <th className="p-3">動作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y text-sm">
-                                        {processedClockLogs.length === 0 ? (<tr><td colSpan="4" className="p-8 text-center text-gray-400">目前尚無符合條件的打卡資料</td></tr>) : (processedClockLogs.map(log => (<tr key={log.id} className="hover:bg-blue-50 transition-colors"><td className="p-3 font-mono text-gray-600">{new Date(log.timestamp).toLocaleString()}</td><td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded">{log.storeName}</span></td><td className="p-3 font-bold text-gray-800">{log.empName}</td><td className="p-3">{log.type === 'in' ? <span className="text-green-700 bg-green-100 px-2 py-1 rounded font-bold">上班</span> : <span className="text-orange-700 bg-orange-100 px-2 py-1 rounded font-bold">下班</span>}</td></tr>)))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {activeTab === 'stores' && <div className="p-8 h-full overflow-y-auto"><div className="flex justify-between items-center mb-6"><h2 className="text-3xl font-bold text-gray-800">🏪 分店設定與管理</h2></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(store => (<div key={store.id} className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all ${editingStoreId === store.id ? 'border-purple-500 ring-2 ring-purple-100' : 'border-transparent'}`}><div className="flex justify-between items-start mb-4"><div className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded text-sm">店號: {store.id}</div>{editingStoreId === store.id ? (<div className="flex gap-2"><button onClick={saveStoreChange} className="text-green-600 bg-green-100 p-2 rounded"><Save size={18}/></button><button onClick={()=>setEditingStoreId(null)} className="text-gray-400 bg-gray-100 p-2 rounded"><X size={18}/></button></div>) : (<button onClick={()=>startEditStore(store)} className="text-gray-400 hover:text-blue-600"><Edit3 size={18}/></button>)}</div><div className="space-y-4"><div><label className="text-xs font-bold text-gray-400">分店名稱</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-bold text-lg outline-none" value={tempStoreData.name} onChange={e=>setTempStoreData({...tempStoreData, name: e.target.value})} /> : <div className="font-bold text-xl">{store.name}</div>}</div><div><label className="text-xs font-bold text-gray-400">密碼</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-mono text-lg outline-none" value={tempStoreData.password} onChange={e=>setTempStoreData({...tempStoreData, password: e.target.value})} /> : <div className="font-mono text-lg text-gray-600">{store.password}</div>}</div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-gray-400">前綴</label>{editingStoreId === store.id ? <input className="w-full border-b outline-none" value={tempStoreData.tablePrefix} onChange={e=>setTempStoreData({...tempStoreData, tablePrefix: e.target.value})} /> : <div className="font-bold">{store.tablePrefix}</div>}</div><div><label className="text-xs font-bold text-gray-400">桌數</label>{editingStoreId === store.id ? <input type="number" className="w-full border-b outline-none" value={tempStoreData.tableCount} onChange={e=>setTempStoreData({...tempStoreData, tableCount: parseInt(e.target.value)})} /> : <div className="font-bold">{store.tableCount} 桌</div>}</div></div></div></div>))}</div></div>}
+                {activeTab === 'employees' && <div className="p-8 h-full overflow-y-auto"><h2 className="text-3xl font-bold mb-6 text-gray-800">👷 員工帳號管理</h2><div className="flex gap-8 items-start"><div className="w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100 sticky top-0"><div className="flex items-center gap-2 mb-6 text-indigo-600"><UserPlus size={24}/><h3 className="font-bold text-xl">新增員工</h3></div><div className="space-y-5"><div><label className="block text-sm font-bold text-gray-500 mb-2">歸屬分店</label><select className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500" value={selectedStoreForEmp} onChange={e=>setSelectedStoreForEmp(e.target.value)}>{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div><div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div><button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button></div></div><div className="w-2/3"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-600">{storesConfig[selectedStoreForEmp]?.name} - 員工名單</h3><span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">共 {(storeEmployees[selectedStoreForEmp]||[]).length} 人</span></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{(storeEmployees[selectedStoreForEmp]||[]).length === 0 && <div className="col-span-2 py-10 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">尚未建立員工資料</div>}{(storeEmployees[selectedStoreForEmp]||[]).map(emp=>(<div key={emp.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 border-indigo-500 group hover:shadow-md transition-shadow"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-bold">{emp.name.charAt(0)}</div><div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-400">密碼: {emp.password}</div></div></div><div className="flex gap-2"><button onClick={()=>setQrModalEmp(emp)} className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="顯示打賞 QR Code"><QrCode size={20}/></button><button onClick={()=>handleDeleteEmployee(emp.id)} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={20}/></button></div></div>))}</div></div></div></div>}
+                {/* ★★★ 5. 菜單設定 (正確呼叫 HQAdvancedMenuManager) ★★★ */}
                 {activeTab === 'menu' && <HQAdvancedMenuManager menuItems={menuItems} setMenuItems={setMenuItems} categories={categories} setCategories={setCategories} diningPlans={diningPlans} setDiningPlans={setDiningPlans} storesConfig={storesConfig} />}
+                {/* ★★★ 6. 訂位總管 (正確呼叫 HQBookingManager) ★★★ */}
                 {activeTab === 'bookings' && <HQBookingManager bookings={bookings} storesConfig={storesConfig} />}
-                {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} onUpdateMember={()=>{}} coupons={coupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} />}
+                {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} setMembers={setMembers} onUpdateMember={()=>{}} coupons={coupons} setCoupons={setCoupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} />}
             </div>
             {qrModalEmp && (<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setQrModalEmp(null)}><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-bounce-in" onClick={e=>e.stopPropagation()}><div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-bold text-orange-600">{qrModalEmp.name.charAt(0)}</div><h3 className="text-2xl font-bold text-gray-800">{qrModalEmp.name}</h3><p className="text-gray-500 mb-6">專屬打賞 QR Code</p><div className="bg-white p-2 rounded-xl border-4 border-orange-500 inline-block mb-4 shadow-inner"><canvas id="emp-qr-canvas" className="w-64 h-64"></canvas></div><p className="text-xs text-gray-400 mb-6 px-4">請顧客使用手機掃描上方條碼<br/>即可進入打賞頁面</p><button onClick={()=>setQrModalEmp(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-bold w-full">關閉視窗</button></div></div>)}
         </div>
     );
 };
 
-// =======================================================
-// --- 6. LoginPage (無敵版：雲端讀不到就讀備份) ---
-// =======================================================
+// --- 6. LoginPage ---
 const LoginPage = ({ onLogin, storesConfig }) => {
   const [storeId, setStoreId] = useState('');
   const [password, setPassword] = useState('');
-
-  const handleCheckLogin = () => {
-    // 1. 先試著從雲端資料找分店
-    let target = storesConfig && storesConfig[storeId];
-
-    // ★★★ 關鍵修正：如果雲端還沒抓到，強制讀取原本寫死的備份設定 ★★★
-    // 這保證了 003 / 18127 永遠有效！
-    if (!target) {
-        target = INITIAL_STORES_CONFIG[storeId];
-    }
-
-    // 2. 驗證密碼
-    if (target && target.password === password) {
-        onLogin(storeId, target);
-    } else {
-        alert(`登入失敗！\n找不到分店 [${storeId}] 或密碼錯誤。`);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full flex">
         <div className="w-1/2 bg-orange-600 p-12 flex flex-col justify-center text-white">
-          <h1 className="text-4xl font-bold mb-4">野饌燒肉</h1>
-          <p className="text-xl opacity-90">活泰國蝦吃到飽 POS 系統</p>
-          <div className="mt-8 text-sm opacity-70 bg-black/20 p-4 rounded-xl">
-             <p>連線模式：☁️ Firebase 雲端同步中</p>
-          </div>
+          <h1 className="text-4xl font-bold mb-4">野饌燒肉</h1><p className="text-xl opacity-90">活泰國蝦吃到飽 POS 系統</p>
         </div>
         <div className="w-1/2 p-12 flex flex-col justify-center space-y-6">
-          <h2 className="text-3xl font-bold text-center text-gray-800">系統登入</h2>
-          <div>
-            <label className="block text-gray-500 font-bold mb-2">分店代碼</label>
-            <input className="w-full p-4 border-2 border-gray-200 rounded-xl font-bold text-lg outline-none focus:border-orange-500" placeholder="例如: 003" value={storeId} onChange={e => setStoreId(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-gray-500 font-bold mb-2">密碼</label>
-            <input className="w-full p-4 border-2 border-gray-200 rounded-xl font-bold text-lg outline-none focus:border-orange-500" type="password" placeholder="輸入密碼" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCheckLogin()}/>
-          </div>
-          <button onClick={handleCheckLogin} className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-gray-800 transition-transform active:scale-95">登入系統</button>
+          <h2 className="text-3xl font-bold text-center">系統登入</h2>
+          <input className="w-full p-3 border rounded" placeholder="分店代碼 (000=總部)" value={storeId} onChange={e => setStoreId(e.target.value)} />
+          <input className="w-full p-3 border rounded" type="password" placeholder="密碼" value={password} onChange={e => setPassword(e.target.value)} />
+          <button onClick={() => { const s = storesConfig[storeId]; if(s && s.password===password) onLogin(storeId, s); else alert('錯誤'); }} className="w-full bg-gray-900 text-white py-3 rounded font-bold">登入</button>
         </div>
       </div>
     </div>
   );
 };
 
-// --- 7. App (Entry Point) - 雲端同步 + 自動抓取本機舊資料版 ---
+// --- 7. App (Entry Point) - 全雲端同步版 (正確邏輯) ---
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentStore, setCurrentStore] = useState(null); 
   const [isHQMode, setIsHQMode] = useState(false); 
   
   // =========================================================================
-  // 1. 核心資料：全部連線 Firebase 雲端
+  // ★★★ 核心修正：全部改回 useFirebaseState (雲端同步) ★★★
+  // 這樣總部一改，全部分店都會立刻更新！
   // =========================================================================
+  
+  // 1. 基礎設定 (雲端)
   const [storesConfig, setStoresConfig] = useFirebaseState('pos_data', 'stores_config', INITIAL_STORES_CONFIG); 
   const [diningPlans, setDiningPlans] = useFirebaseState('pos_data', 'plans', INITIAL_DINING_PLANS);
   const [menuItems, setMenuItems] = useFirebaseState('pos_data', 'menu', INITIAL_MENU_ITEMS);
@@ -2949,67 +2604,52 @@ export default function App() {
   const [storeEmployees, setStoreEmployees] = useFirebaseState('pos_data', 'employees', INITIAL_STORE_EMPLOYEES);
   const [memberAppSettings, setMemberAppSettings] = useFirebaseState('pos_data', 'app_settings', INITIAL_MEMBER_APP_SETTINGS);
   
+  // 2. 行銷與優惠 (雲端)
   const [coupons, setCoupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
   const [slotPrizes, setSlotPrizes] = useFirebaseState('pos_data', 'slot_prizes', INITIAL_SLOT_PRIZES);
   const [tiers, setTiers] = useFirebaseState('pos_data', 'tiers', INITIAL_TIERS);
 
+  // 3. 營運數據 (雲端 - 這樣總部才看得到各店資料)
   const [bookings, setBookings] = useFirebaseState('pos_data', 'bookings', []); 
   const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
-  const [clockLogs, setClockLogs] = useFirebaseState('pos_data', 'clock_logs', []); // 打卡紀錄
-  const [salesLogs, setSalesLogs] = useFirebaseState('pos_data', 'sales_logs', []); // 營收紀錄
+  const [clockLogs, setClockLogs] = useFirebaseState('pos_data', 'clock_logs', []);
   const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
   const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
+  const [salesLogs, setSalesLogs] = useFirebaseState('pos_data', 'sales_logs', []);
   const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
 
-  // =========================================================================
-  // ★★★ 關鍵修復：自動救援機制 (Auto-Upload) ★★★
-  // 只要發現雲端是空的，就自動把電腦裡的舊資料傳上去！
-  // =========================================================================
-  useEffect(() => {
-      const tryRestore = (localKey, cloudData, setCloudData, label) => {
-          // 如果雲端沒資料 (或是預設值)，但本機有資料
-          if ((!cloudData || cloudData.length === 0) && localStorage.getItem(localKey)) {
-              const localData = JSON.parse(localStorage.getItem(localKey));
-              if (localData && localData.length > 0) {
-                  console.log(`正在自動上傳【${label}】至雲端...`);
-                  setCloudData(localData); // 這行指令會觸發 Firebase 寫入
-              }
-          }
-      };
-
-      // 1. 自動救回員工
-      tryRestore('pos_employees_v1', storeEmployees, setStoreEmployees, '員工資料');
-      // 2. 自動救回打卡紀錄
-      tryRestore('pos_clock_logs_v1', clockLogs, setClockLogs, '打卡紀錄');
-      // 3. 自動救回菜單
-      tryRestore('pos_menu_items_v1', menuItems, setMenuItems, '菜單');
-      // 4. 自動救回營收
-      tryRestore('pos_sales_logs_v1', salesLogs, setSalesLogs, '營收紀錄');
-      // 5. 自動救回訂位
-      tryRestore('pos_bookings_v1', bookings, setBookings, '訂位資料');
-
-  }, [storeEmployees, clockLogs, menuItems, salesLogs, bookings]); // 當連線建立時執行檢查
+  const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || '003'}`, INITIAL_PRINTERS);
 
   // Tip Mode Logic
   const queryParams = new URLSearchParams(window.location.search);
-  const isTipMode = queryParams.get('mode') === 'tip';
+  const mode = queryParams.get('mode');          // 這裡定義了 mode
+  const tableId = queryParams.get('table');      // 這裡定義了 tableId
   const urlStoreId = queryParams.get('store');
   const employeeId = queryParams.get('empId');
+  const isTipMode = mode === 'tip';
 
+  // Tip Page Render
   if (isTipMode && employeeId) {
      return <TipWrapper storeId={urlStoreId} employeeId={employeeId} storesConfig={storesConfig} onAddTip={(tip) => setTipLogs(prev => [tip, ...prev])} />;
   }
 
-  // ★ 登入邏輯：優先讀雲端，讀不到才讀預設
+  // ★★★ 顧客點餐模式判斷 ★★★
+  if (mode === 'customer' && urlStoreId && tableId) {
+      const currentPrinters = cloudPrinters || INITIAL_PRINTERS;
+      return (
+        <CustomerWrapper 
+            tableId={tableId} 
+            storeId={urlStoreId} 
+            printerConfig={currentPrinters}
+            onGoToMember={() => console.log("切換至會員中心")} 
+        />
+      );
+  }
+
   const handleLogin = (storeId, storeData) => {
-    const validStoreData = storeData || INITIAL_STORES_CONFIG[storeId];
-    if (validStoreData) {
-        if (validStoreData.type === 'HQ') setIsHQMode(true);
-        setCurrentStore(validStoreData);
-        setIsLoggedIn(true);
-    } else {
-        alert("系統讀取中，請稍後再試...");
-    }
+    if (storeData.type === 'HQ') setIsHQMode(true);
+    setCurrentStore(storeData);
+    setIsLoggedIn(true);
   };
 
   if (!isLoggedIn) return <LoginPage onLogin={handleLogin} storesConfig={storesConfig} />;
@@ -3059,4 +2699,69 @@ const TipWrapper = ({ storeId, employeeId, storesConfig, onAddTip }) => {
     const emp = storeEmps.find(e => e.id.toString() === employeeId) || { name: '服務員' };
 
     return <TipPage employee={emp} storeId={storeId} onAddTip={onAddTip} />;
+};
+
+// =======================================================
+// ★★★ 修正版 CustomerWrapper：解決無法切換會員中心與註冊的問題 ★★★
+// =======================================================
+const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
+    // 1. 讀取分店桌況 (給點餐用)
+    const [tables] = useFirebaseState('pos_data', `tables_${storeId}`, []);
+    const [diningPlans] = useFirebaseState('pos_data', 'plans', INITIAL_DINING_PLANS);
+    const [menuItems] = useFirebaseState('pos_data', 'menu', INITIAL_MENU_ITEMS);
+    const [categories] = useFirebaseState('pos_data', 'categories', INITIAL_CATEGORIES);
+    const [stockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
+
+    // 2. ★★★ 新增：讀取會員資料 (給會員中心用，修復註冊功能) ★★★
+    const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
+    const [coupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
+    const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
+
+    // 3. 視圖切換狀態
+    const [viewMode, setViewMode] = useState('menu'); // 'menu' or 'member'
+
+    // 4. 更新會員資料 (註冊或兌換)
+    const handleUpdateMember = (updatedMember) => {
+        setMembers(prevMembers => {
+            const exists = prevMembers.some(m => m.phone === updatedMember.phone);
+            if (exists) {
+                return prevMembers.map(m => m.phone === updatedMember.phone ? updatedMember : m);
+            } else {
+                return [...prevMembers, updatedMember];
+            }
+        });
+    };
+
+    const handleAddMemberLog = (log) => {
+        setMemberLogs(prev => [{ id: Date.now(), timestamp: Date.now(), ...log }, ...prev]);
+    };
+
+    if (viewMode === 'member') {
+        return (
+            <CustomerMemberPortal
+                members={members}
+                onUpdateMember={handleUpdateMember}
+                coupons={coupons}
+                addLog={handleAddMemberLog}
+                onBack={() => setViewMode('menu')}
+            />
+        );
+    }
+
+    // 呼叫原本的 CustomerOrderPage，並傳入正確的切換函數
+    return (
+        <CustomerOrderPage 
+            tableId={tableId} 
+            storeId={storeId} 
+            diningPlans={diningPlans} 
+            menuItems={menuItems} 
+            categories={categories} 
+            setTables={()=>{}} 
+            tables={tables} 
+            printers={[]} 
+            stockStatus={stockStatus} 
+            onGoToMember={() => setViewMode('member')} 
+            printerConfig={printerConfig}
+        />
+    );
 };
