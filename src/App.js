@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
+import { ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, EyeOff, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
 import { db } from './firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import QRCode from 'qrcode';
@@ -383,9 +383,9 @@ const OrderHistoryModal = ({ orders, onClose }) => {
 };
 
 // =======================================================
-// ★★★ 修正版 CustomerOrderPage：加入右上角行銷標語 ★★★
+// ★★★ 修正版 CustomerOrderPage：加入隱藏分類邏輯 ★★★
 // =======================================================
-const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categories, setTables, tables, printers, stockStatus, onGoToMember, printerConfig }) => {
+const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categories, setTables, tables, printers, stockStatus, onGoToMember, printerConfig, hiddenCategories }) => {
     const [cart, setCart] = useState([]);
     const [addedId, setAddedId] = useState(null);
     const [activeCategory, setActiveCategory] = useState('All');
@@ -408,7 +408,22 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
     
     const safeDiningPlans = diningPlans || INITIAL_DINING_PLANS;
     const currentPlan = safeDiningPlans.find(p => p.id === currentTable.plan) || safeDiningPlans[0];
-    const filteredItems = (menuItems || []).filter(item => { if (item.onlyForStaff === true) return false; if (activeCategory !== 'All' && item.category !== activeCategory) return false; if (item.price === 0 && !item.allowedPlans?.includes(currentPlan.id)) return false; if (stockStatus && stockStatus[storeId]?.[item.id] === true) return false; return true; });
+
+    // ★★★ 修改 1：過濾上方的分類按鈕，排除隱藏的分類 ★★★
+    const visibleCategories = (categories || []).filter(cat => !(hiddenCategories || []).includes(cat));
+
+    // ★★★ 修改 2：過濾菜色，排除隱藏分類的菜 ★★★
+    const filteredItems = (menuItems || []).filter(item => { 
+        if (item.onlyForStaff === true) return false; 
+        
+        // 檢查：如果該菜色的分類在隱藏名單中，就不顯示
+        if ((hiddenCategories || []).includes(item.category)) return false;
+
+        if (activeCategory !== 'All' && item.category !== activeCategory) return false; 
+        if (item.price === 0 && !item.allowedPlans?.includes(currentPlan.id)) return false; 
+        if (stockStatus && stockStatus[storeId]?.[item.id] === true) return false; 
+        return true; 
+    });
 
     const handleAddToCart = (item) => { 
         if (cart.length >= 12) { alert("⚠️ 為了出餐品質，每次限點 12 樣喔！\n請先至購物車送出訂單。"); return; } 
@@ -482,7 +497,6 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
                 <div className="flex justify-between items-center mb-1">
                     <div><h1 className="font-bold text-lg">桌號 {tableId}</h1><div className="text-xs opacity-70">方案: {currentPlan.name}</div></div>
                     
-                    {/* ★★★ 這裡加入了行銷標語 ★★★ */}
                     <div className="flex items-center">
                          <div className="text-[10px] bg-yellow-400 text-red-800 font-bold px-2 py-1 rounded-l-lg animate-pulse mr-[-5px] z-0 shadow-sm">
                             加入會員<br/>滿千抽獎
@@ -494,8 +508,30 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
                 </div>
                 <div className="flex justify-between items-end border-t border-gray-700 pt-1 mt-1"><div><div className="font-bold text-orange-400 text-xs">最後加點</div><div className="text-sm">{formatTime(currentTable.startTime + 90*60*1000)}</div></div><button onClick={() => setShowHistory(true)} className="text-xs text-gray-400 underline flex items-center gap-1"><ClipboardList size={12}/> 已點紀錄</button></div>
             </div>
-            <div className="flex overflow-x-auto bg-white p-4 shadow-md gap-3 sticky top-[88px] z-10 no-scrollbar"><style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style> {['All', ...categories].map(cat => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-6 py-3 rounded-full font-bold text-lg whitespace-nowrap flex-shrink-0 transition-transform active:scale-95 ${activeCategory === cat ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>{cat}</button>))}</div>
-            <div className="flex-grow overflow-y-auto p-4 pb-32"><div className="grid grid-cols-2 gap-4">{filteredItems.map(item => (<button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-3 rounded-xl shadow-sm flex flex-col items-center gap-2 relative ${addedId === item.id ? 'ring-2 ring-green-500' : ''}`}><div className="w-full h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-300 font-bold text-2xl">{item.name[0]}</div><div className="text-center"><div className="font-bold text-gray-800">{item.name}</div>{item.price > 0 && <div className="text-orange-600 text-xs font-bold">+${item.price}</div>}</div></button>))}</div></div>
+            
+            {/* ★★★ 修改 3：渲染分類按鈕，改用 visibleCategories ★★★ */}
+            <div className="flex overflow-x-auto bg-white p-4 shadow-md gap-3 sticky top-[88px] z-10 no-scrollbar">
+                <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style> 
+                {['All', ...visibleCategories].map(cat => (
+                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-6 py-3 rounded-full font-bold text-lg whitespace-nowrap flex-shrink-0 transition-transform active:scale-95 ${activeCategory === cat ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
+                        {cat === 'All' ? '全部' : cat}
+                    </button>
+                ))}
+            </div>
+
+            <div className="flex-grow overflow-y-auto p-4 pb-32">
+                <div className="grid grid-cols-2 gap-4">
+                    {filteredItems.map(item => (
+                        <button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-3 rounded-xl shadow-sm flex flex-col items-center gap-2 relative ${addedId === item.id ? 'ring-2 ring-green-500' : ''}`}>
+                            <div className="w-full h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-300 font-bold text-2xl">{item.name[0]}</div>
+                            <div className="text-center">
+                                <div className="font-bold text-gray-800">{item.name}</div>
+                                {item.price > 0 && <div className="text-orange-600 text-xs font-bold">+${item.price}</div>}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
             {cart.length > 0 && (<div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.1)] p-4 rounded-t-2xl z-20"><button onClick={() => setShowCart(true)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-xl shadow-lg flex items-center justify-center gap-2"><ShoppingCart size={24} />查看購物車 ({cart.length})</button></div>)}
             {showHistory && (<OrderHistoryModal orders={currentTable.orders} onClose={() => setShowHistory(false)} />)}
         </div>
@@ -1507,14 +1543,15 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
         </div>
     );
 };
-
 // =======================================================
-// ★★★ 補回遺失的 CheckoutModal (結帳視窗) ★★★
+// ★★★ 修正版 CheckoutModal：加入餐點明細列表 ★★★
 // =======================================================
 const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons, members, slotPrizes, onUpdateMember, printers, storeId }) => {
-    const plan = diningPlans.find(p => p.id === table.plan);
+    const plan = diningPlans.find(p => p.id === table.plan) || { name: '未知方案', price: 0, childPrice: 0 };
     const subtotal = (table.adults * plan.price) + (table.children * plan.childPrice);
     const serviceFee = Math.round(subtotal * 0.1);
+    
+    // 計算已點餐點中的小費
     const tipTotal = (table.orders || []).filter(o => o.category === 'Tip').reduce((sum, item) => sum + (parseInt(item.price) || 0), 0);
     
     const [memberPhone, setMemberPhone] = useState('');
@@ -1551,7 +1588,12 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
         return totalDisc + slotPrizeDiscount;
     };
     
-    const getDiscountDisplay = () => { if (customDiscount.type === 'percent') return Math.round(subtotal * (1 - customDiscount.val/100)); if (customDiscount.type === 'single') return Math.round(plan.price * (1 - customDiscount.val/100)); return parseInt(customDiscount.val || 0); }
+    const getDiscountDisplay = () => { 
+        if (customDiscount.type === 'percent') return Math.round(subtotal * (1 - customDiscount.val/100)); 
+        if (customDiscount.type === 'single') return Math.round(plan.price * (1 - customDiscount.val/100)); 
+        return parseInt(customDiscount.val || 0); 
+    }
+
     const finalTotal = Math.max(0, subtotal + serviceFee + tipTotal - calculateDiscount());
     const changeAmount = receivedAmount ? parseInt(receivedAmount) - finalTotal : 0;
     
@@ -1588,7 +1630,7 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
         try { 
             const SERVER_API = `${STORE_URLS[storeId]}/api/print`; 
             await fetch(SERVER_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ type: 'checkout', tableId: table.id, targetIp: targetIp, content: [], extraInfo: { planName: plan.name, adults: table.adults, children: table.children, finalTotal: finalTotal, receivedAmount: receivedAmount, changeAmount: changeAmount, paymentMethod: paymentMethod } }) 
+                body: JSON.stringify({ type: 'checkout', tableId: table.id, targetIp: targetIp, content: table.orders || [], extraInfo: { planName: plan.name, adults: table.adults, children: table.children, finalTotal: finalTotal, receivedAmount: receivedAmount, changeAmount: changeAmount, paymentMethod: paymentMethod } }) 
             }); 
         } catch (error) { console.error("無法連線出單機:", error); }
         onConfirmPayment(table.id, { receivedAmount, changeAmount, memberPhone, finalTotal, planName: plan.name, adults: table.adults, children: table.children, paymentMethod: paymentMethod }, appliedCoupon ? appliedCoupon.id : null); 
@@ -1607,19 +1649,48 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
                         {spinResult && !isSpinning && <button onClick={()=>setShowSlotMachine(false)} className="mt-8 bg-gray-600 hover:bg-gray-500 px-8 py-3 rounded-xl font-bold">關閉並領獎</button>}
                     </div>
                 )}
-                <div className="w-1/2 bg-gray-50 p-8 border-r overflow-y-auto"><h2 className="text-2xl font-bold mb-6">結帳確認 - 桌號 {table.id}</h2>
-                <div className="space-y-2 mb-6 text-sm">
-                    <div className="flex justify-between"><span>方案 ({table.adults}大 {table.children}小)</span><span>${subtotal}</span></div>
-                    <div className="flex justify-between"><span>服務費 (10%)</span><span>${serviceFee}</span></div>
-                    {tipTotal > 0 && <div className="flex justify-between text-blue-600 font-bold"><span>服務員打賞 (小費)</span><span>+${tipTotal}</span></div>}
-                    {appliedCoupon && (<div className="flex justify-between text-green-600 font-bold"><span>優惠券 ({appliedCoupon.name})</span><span>{appliedCoupon.type === 'item' ? '兌換食材' : appliedCoupon.type === 'percent' ? `-${Math.round(subtotal * (1 - appliedCoupon.value/100))}` : `-$${appliedCoupon.value}`}</span></div>)}
-                    {customDiscount.type !== 'none' && <div className="flex justify-between text-green-600 font-bold"><span>手動折扣</span><span>-${getDiscountDisplay()}</span></div>}
-                    {slotPrizeDiscount > 0 && <div className="flex justify-between text-yellow-600 font-bold"><span>🎰 抽獎折扣</span><span>-${slotPrizeDiscount}</span></div>}
-                    <div className="flex justify-between text-3xl font-bold border-t pt-4 mt-2 text-gray-800"><span>總金額</span><span>${finalTotal}</span></div>
+                
+                {/* 左側：訂單詳情與金額計算 */}
+                <div className="w-1/2 bg-gray-50 p-8 border-r overflow-y-auto flex flex-col">
+                    <h2 className="text-2xl font-bold mb-4">結帳確認 - 桌號 {table.id}</h2>
+                    
+                    {/* ★★★ 新增：餐點明細列表 ★★★ */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex-grow overflow-y-auto max-h-64">
+                        <h3 className="font-bold text-gray-500 text-xs mb-2 border-b pb-1">餐點明細 ({table.orders?.length || 0})</h3>
+                        {table.orders && table.orders.length > 0 ? (
+                            <div className="space-y-1">
+                                {table.orders.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm text-gray-700">
+                                        <span>{item.name} {item.count > 1 ? `x${item.count}` : ''}</span>
+                                        <span className="font-bold">
+                                            {item.category === 'Tip' ? `$${item.price}` : (item.price > 0 ? `$${item.price}` : '-')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-400 text-sm py-4">無點餐紀錄</div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2 mb-6 text-sm">
+                        <div className="flex justify-between"><span>方案 ({table.adults}大 {table.children}小)</span><span>${subtotal}</span></div>
+                        <div className="flex justify-between"><span>服務費 (10%)</span><span>${serviceFee}</span></div>
+                        {tipTotal > 0 && <div className="flex justify-between text-blue-600 font-bold"><span>服務員打賞 (小費)</span><span>+${tipTotal}</span></div>}
+                        {appliedCoupon && (<div className="flex justify-between text-green-600 font-bold"><span>優惠券 ({appliedCoupon.name})</span><span>{appliedCoupon.type === 'item' ? '兌換食材' : appliedCoupon.type === 'percent' ? `-${Math.round(subtotal * (1 - appliedCoupon.value/100))}` : `-$${appliedCoupon.value}`}</span></div>)}
+                        {customDiscount.type !== 'none' && <div className="flex justify-between text-green-600 font-bold"><span>手動折扣</span><span>-${getDiscountDisplay()}</span></div>}
+                        {slotPrizeDiscount > 0 && <div className="flex justify-between text-yellow-600 font-bold"><span>🎰 抽獎折扣</span><span>-${slotPrizeDiscount}</span></div>}
+                        <div className="flex justify-between text-3xl font-bold border-t pt-4 mt-2 text-gray-800"><span>總金額</span><span>${finalTotal}</span></div>
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded-xl shadow-sm border mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">折扣設定</label><div className="flex gap-2 mb-2"><select className="border p-2 rounded text-sm flex-grow" value={customDiscount.type} onChange={e => setCustomDiscount({...customDiscount, type: e.target.value, val: e.target.value === 'single' ? 90 : 0})}><option value="none">無折扣</option><option value="single">單人折扣</option><option value="percent">整桌折扣</option><option value="amount">金額折抵</option></select>{(customDiscount.type === 'percent' || customDiscount.type === 'single') && (<div className="flex gap-1">{[95, 90, 80].map(r => (<button key={r} onClick={() => setCustomDiscount({...customDiscount, val: r})} className={`px-2 rounded text-xs font-bold border ${parseInt(customDiscount.val) === r ? 'bg-orange-500 text-white' : 'bg-white'}`}>{r}折</button>))}<input type="number" className="border p-2 rounded w-16 text-sm" placeholder="%" value={customDiscount.val} onChange={e => setCustomDiscount({...customDiscount, val: e.target.value})} /></div>)}{customDiscount.type === 'amount' && <input type="number" className="border p-2 rounded w-24 text-sm" placeholder="$" value={customDiscount.val} onChange={e => setCustomDiscount({...customDiscount, val: e.target.value})} />}</div><div className="flex gap-2"><input className="border p-2 rounded flex-grow text-sm" placeholder="輸入優惠代碼" value={discountCode} onChange={e => setDiscountCode(e.target.value)} /><button onClick={applyDiscountCode} className="bg-gray-800 text-white px-3 rounded font-bold text-sm">應用</button></div></div>
+                    
+                    <div className="bg-white p-4 rounded-xl shadow-sm border mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">會員查詢</label><div className="flex gap-2 mb-2"><input className="border p-2 rounded flex-grow" placeholder="電話" value={memberPhone} onChange={e => setMemberPhone(e.target.value)} /><button onClick={handleSearchMember} className="bg-blue-600 text-white px-4 rounded font-bold">查詢</button></div>{foundMember && (<div className="text-sm bg-blue-50 p-2 rounded text-blue-800 flex justify-between items-center"><div><div>{foundMember.name} <span className="bg-yellow-200 text-yellow-800 px-1 rounded text-xs ml-1">{foundMember.level}</span></div><div>點數: {foundMember.points}</div></div>{finalTotal >= 1000 && !spinResult && (<button onClick={()=>setShowSlotMachine(true)} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-lg font-bold text-xs shadow hover:scale-105 transition flex items-center gap-1"><Sparkles size={12}/> 滿千抽獎</button>)}</div>)}</div>
+                    
+                    {foundMember && (<div className="mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">會員票夾 (已擁有)</label><div className="flex flex-wrap gap-2">{foundMember.items.filter(i => !i.redeemed).length === 0 ? <span className="text-gray-400 text-xs">無可用票券</span> : foundMember.items.filter(i => !i.redeemed).map(item => { const couponMeta = coupons.find(c => c.name === item.name); const isUsable = couponMeta; return (<button key={item.id} onClick={() => isUsable && setAppliedCoupon(appliedCoupon?.name === item.name ? null : { ...item, type: couponMeta.type, value: couponMeta.value })} disabled={!isUsable} className={`px-3 py-1 text-xs rounded border flex items-center gap-1 ${!isUsable ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : appliedCoupon?.name === item.name ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-gray-600 hover:border-orange-300'}`}>{item.name}</button>); })}</div></div>)}
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">折扣設定</label><div className="flex gap-2 mb-2"><select className="border p-2 rounded text-sm flex-grow" value={customDiscount.type} onChange={e => setCustomDiscount({...customDiscount, type: e.target.value, val: e.target.value === 'single' ? 90 : 0})}><option value="none">無折扣</option><option value="single">單人折扣</option><option value="percent">整桌折扣</option><option value="amount">金額折抵</option></select>{(customDiscount.type === 'percent' || customDiscount.type === 'single') && (<div className="flex gap-1">{[95, 90, 80].map(r => (<button key={r} onClick={() => setCustomDiscount({...customDiscount, val: r})} className={`px-2 rounded text-xs font-bold border ${parseInt(customDiscount.val) === r ? 'bg-orange-500 text-white' : 'bg-white'}`}>{r}折</button>))}<input type="number" className="border p-2 rounded w-16 text-sm" placeholder="%" value={customDiscount.val} onChange={e => setCustomDiscount({...customDiscount, val: e.target.value})} /></div>)}{customDiscount.type === 'amount' && <input type="number" className="border p-2 rounded w-24 text-sm" placeholder="$" value={customDiscount.val} onChange={e => setCustomDiscount({...customDiscount, val: e.target.value})} />}</div><div className="flex gap-2"><input className="border p-2 rounded flex-grow text-sm" placeholder="輸入優惠代碼" value={discountCode} onChange={e => setDiscountCode(e.target.value)} /><button onClick={applyDiscountCode} className="bg-gray-800 text-white px-3 rounded font-bold text-sm">應用</button></div></div><div className="bg-white p-4 rounded-xl shadow-sm border mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">會員查詢</label><div className="flex gap-2 mb-2"><input className="border p-2 rounded flex-grow" placeholder="電話" value={memberPhone} onChange={e => setMemberPhone(e.target.value)} /><button onClick={handleSearchMember} className="bg-blue-600 text-white px-4 rounded font-bold">查詢</button></div>{foundMember && (<div className="text-sm bg-blue-50 p-2 rounded text-blue-800 flex justify-between items-center"><div><div>{foundMember.name} <span className="bg-yellow-200 text-yellow-800 px-1 rounded text-xs ml-1">{foundMember.level}</span></div><div>點數: {foundMember.points}</div></div>{finalTotal >= 1000 && !spinResult && (<button onClick={()=>setShowSlotMachine(true)} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-lg font-bold text-xs shadow hover:scale-105 transition flex items-center gap-1"><Sparkles size={12}/> 滿千抽獎</button>)}</div>)}</div>{foundMember && (<div className="mb-4"><label className="text-xs font-bold text-gray-500 mb-2 block">會員票夾 (已擁有)</label><div className="flex flex-wrap gap-2">{foundMember.items.filter(i => !i.redeemed).length === 0 ? <span className="text-gray-400 text-xs">無可用票券</span> : foundMember.items.filter(i => !i.redeemed).map(item => { const couponMeta = coupons.find(c => c.name === item.name); 
-                const isUsable = couponMeta; 
-                return (<button key={item.id} onClick={() => isUsable && setAppliedCoupon(appliedCoupon?.name === item.name ? null : { ...item, type: couponMeta.type, value: couponMeta.value })} disabled={!isUsable} className={`px-3 py-1 text-xs rounded border flex items-center gap-1 ${!isUsable ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : appliedCoupon?.name === item.name ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-gray-600 hover:border-orange-300'}`}>{item.name}</button>); })}</div></div>)}</div>
+
+                {/* 右側：數字鍵盤與支付 */}
                 <div className="w-1/2 p-8 flex flex-col bg-gray-50">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border h-full flex flex-col">
                         <label className="block text-gray-500 font-bold mb-2">實收金額</label>
@@ -1635,6 +1706,219 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
     );
 };
 
+// =======================================================
+// ★★★ 新增：TableFeedbackModal (支援複選版) ★★★
+// =======================================================
+const TableFeedbackModal = ({ tableInfo, storeId, onClose, onSubmit, onDefer }) => {
+    // 1. 訂位姓氏
+    const [lastName, setLastName] = useState('');
+    // 2. 手機號碼
+    const [phone, setPhone] = useState('');
+    
+    // ★★★ 改為複選 (Array) ★★★
+    const [sources, setSources] = useState([]); // Q4
+    const [purposes, setPurposes] = useState([]); // Q6
+    const [favDishes, setFavDishes] = useState([]); // Q8
+    const [serviceFeels, setServiceFeels] = useState([]); // Q9
+
+    // 其他文字輸入框
+    const [sourceOther, setSourceOther] = useState('');
+    const [purposeOther, setPurposeOther] = useState('');
+    const [favDishOther, setFavDishOther] = useState('');
+
+    // 維持單選 (邏輯上互斥)
+    const [visitHistory, setVisitHistory] = useState(''); // Q5
+    const [visitCount, setVisitCount] = useState('');
+    const [foodQuality, setFoodQuality] = useState(''); // Q7
+    const [foodQualityOther, setFoodQualityOther] = useState('');
+
+    // 10. 整體建議
+    const [suggestion, setSuggestion] = useState('');
+
+    // 選項常數
+    const OPTS_SOURCE = ['Google搜尋', '臉書廣告', '抖音', '網紅影片', '路過', '來過', '其他'];
+    const OPTS_VISIT = ['沒有來過', '有來過'];
+    const OPTS_PURPOSE = ['朋友聚餐', '家庭聚餐', '情侶約會', '慶生', '公司聚餐', '團體聚餐', '其他'];
+    const OPTS_QUALITY = ['滿意', '普通', '不滿意', '有其他反應'];
+    const OPTS_FAV = ['活泰國蝦', '蚵仔生蠔', '和牛', '牛舌', '松阪豬', '啤酒冰淇淋', '其他'];
+    const OPTS_SERVICE = ['熱情親切', '有效率', '普普通通', '有待改善'];
+
+    // ★★★ 複選切換邏輯 ★★★
+    const toggleSelection = (list, setList, item) => {
+        if (list.includes(item)) {
+            setList(list.filter(i => i !== item)); // 已存在則移除
+        } else {
+            setList([...list, item]); // 不存在則加入
+        }
+    };
+
+    // 檢查是否全部填寫完成
+    const isFormValid = () => {
+        if (!lastName.trim()) return false;
+        if (!phone.trim()) return false;
+        if (sources.length === 0) return false; // 檢查陣列是否有值
+        if (sources.includes('其他') && !sourceOther.trim()) return false;
+        
+        if (!visitHistory) return false;
+        if (visitHistory === '有來過' && !visitCount) return false;
+        
+        if (purposes.length === 0) return false;
+        if (purposes.includes('其他') && !purposeOther.trim()) return false;
+        
+        if (!foodQuality) return false;
+        if (foodQuality === '有其他反應' && !foodQualityOther.trim()) return false;
+        
+        if (favDishes.length === 0) return false;
+        if (favDishes.includes('其他') && !favDishOther.trim()) return false;
+        
+        if (serviceFeels.length === 0) return false;
+        
+        if (!suggestion.trim()) return false; // 第10題必填
+        return true;
+    };
+
+    const handleSubmit = () => {
+        if (!isFormValid()) return alert("⚠️ 請填寫完整資訊才能送出！");
+        
+        // 組合字串：將陣列轉為 "選項A, 選項B" 的格式
+        const formatMultiSelect = (list, otherVal, otherLabel = '其他') => {
+            let result = list.filter(i => i !== otherLabel).join(', ');
+            if (list.includes(otherLabel)) {
+                result += result ? `, 其他: ${otherVal}` : `其他: ${otherVal}`;
+            }
+            return result;
+        };
+
+        const feedbackData = {
+            id: Date.now(),
+            storeId,
+            tableId: tableInfo.id,
+            timestamp: Date.now(),
+            pax: `${tableInfo.adults}大${tableInfo.children}小`,
+            totalPrice: tableInfo.finalTotal,
+            // 答案區
+            q1_name: lastName,
+            q2_phone: phone,
+            q3_paxPrice: `${tableInfo.adults}大${tableInfo.children}小 / $${tableInfo.finalTotal}`,
+            q4_source: formatMultiSelect(sources, sourceOther),
+            q5_visit: visitHistory === '有來過' ? `來過 ${visitCount} 次` : '沒有來過',
+            q6_purpose: formatMultiSelect(purposes, purposeOther),
+            q7_quality: foodQuality === '有其他反應' ? `反應: ${foodQualityOther}` : foodQuality,
+            q8_fav: formatMultiSelect(favDishes, favDishOther),
+            q9_service: serviceFeels.join(', '),
+            q10_suggestion: suggestion
+        };
+        onSubmit(feedbackData);
+    };
+
+    // ★★★ 渲染複選按鈕 ★★★
+    const renderMultiOptions = (options, currentList, setList, otherVal, setOtherVal, otherLabel = '其他') => (
+        <div className="flex flex-wrap gap-2 mt-1">
+            {options.map(opt => (
+                <button 
+                    key={opt} 
+                    onClick={() => toggleSelection(currentList, setList, opt)}
+                    className={`px-3 py-2 rounded-lg text-sm font-bold border transition-all flex items-center gap-1 ${currentList.includes(opt) ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'bg-white text-gray-600 border-gray-300'}`}
+                >
+                    {opt} {currentList.includes(opt) && <Check size={14}/>}
+                </button>
+            ))}
+            {currentList.includes(otherLabel) && (
+                <input 
+                    autoFocus
+                    className="border-b-2 border-orange-500 outline-none px-2 py-1 bg-orange-50 text-gray-800 w-40"
+                    placeholder="請輸入內容..."
+                    value={otherVal}
+                    onChange={e => setOtherVal(e.target.value)}
+                />
+            )}
+        </div>
+    );
+
+    // 渲染單選按鈕 (維持舊邏輯)
+    const renderSingleOptions = (options, currentVal, setVal, otherVal, setOtherVal, otherLabel = '其他') => (
+        <div className="flex flex-wrap gap-2 mt-1">
+            {options.map(opt => (
+                <button key={opt} onClick={()=>setVal(opt)} className={`px-3 py-2 rounded-lg text-sm font-bold border ${currentVal===opt ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`}>{opt}</button>
+            ))}
+            {currentVal === otherLabel && <input className="border-b-2 border-blue-500 outline-none px-2 py-1 w-40" placeholder="內容..." value={otherVal} onChange={e=>setOtherVal(e.target.value)}/>}
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="bg-orange-600 p-4 text-white flex justify-between items-center shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold">📝 用餐滿意度回報 (可複選)</h3>
+                        <p className="text-sm opacity-80">桌號: {tableInfo.id} | 金額: ${tableInfo.finalTotal}</p>
+                    </div>
+                    <button onClick={onDefer} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-bold border border-white/40">⏳ 忙碌中，稍後回報</button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-6 bg-gray-50 flex-grow">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-4 rounded-xl shadow-sm">
+                            <label className="text-xs font-bold text-gray-500 block mb-1">1. 訂位姓氏 <span className="text-red-500">*</span></label>
+                            <input className="w-full text-lg font-bold border-b-2 border-gray-200 focus:border-orange-500 outline-none" placeholder="輸入姓氏" value={lastName} onChange={e=>setLastName(e.target.value)} />
+                        </div>
+                        <div className="bg-white p-4 rounded-xl shadow-sm">
+                            <label className="text-xs font-bold text-gray-500 block mb-1">2. 手機號碼 <span className="text-red-500">*</span></label>
+                            <input type="tel" className="w-full text-lg font-bold border-b-2 border-gray-200 focus:border-orange-500 outline-none" placeholder="09..." value={phone} onChange={e=>setPhone(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-200 p-3 rounded-xl text-gray-600 text-sm font-bold flex justify-between">
+                        <span>3. 人數/價錢 (系統自動帶入)</span>
+                        <span>{tableInfo.adults}大{tableInfo.children}小 / Total: ${tableInfo.finalTotal}</span>
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">4. 如何得知餐廳 (可複選) <span className="text-red-500">*</span></label>
+                        {renderMultiOptions(OPTS_SOURCE, sources, setSources, sourceOther, setSourceOther)}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">5. 是否有來過 (單選) <span className="text-red-500">*</span></label>
+                        {renderSingleOptions(OPTS_VISIT, visitHistory, setVisitHistory)}
+                        {visitHistory === '有來過' && <div className="mt-2 flex items-center gap-2"><span className="text-sm font-bold">次數:</span><input type="number" className="border p-1 w-20 rounded" value={visitCount} onChange={e=>setVisitCount(e.target.value)}/></div>}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">6. 今日用餐目的 (可複選) <span className="text-red-500">*</span></label>
+                        {renderMultiOptions(OPTS_PURPOSE, purposes, setPurposes, purposeOther, setPurposeOther)}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">7. 餐點品質反饋 (單選) <span className="text-red-500">*</span></label>
+                        {renderSingleOptions(OPTS_QUALITY, foodQuality, setFoodQuality, foodQualityOther, setFoodQualityOther, '有其他反應')}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">8. 本次最喜歡的餐點 (可複選) <span className="text-red-500">*</span></label>
+                        {renderMultiOptions(OPTS_FAV, favDishes, setFavDishes, favDishOther, setFavDishOther)}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">9. 對於服務感受 (可複選) <span className="text-red-500">*</span></label>
+                        {renderMultiOptions(OPTS_SERVICE, serviceFeels, setServiceFeels)}
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-bold text-gray-700">10. 整體反饋或建議 <span className="text-red-500">*</span></label>
+                        <textarea className="w-full h-24 border-2 border-gray-300 rounded-xl p-3 mt-1 focus:border-orange-500 outline-none" placeholder="請輸入顧客的具體建議..." value={suggestion} onChange={e=>setSuggestion(e.target.value)} />
+                    </div>
+                </div>
+
+                <div className="p-4 border-t bg-white shrink-0">
+                    <button onClick={handleSubmit} disabled={!isFormValid()} className={`w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all ${isFormValid() ? 'bg-green-600 text-white hover:bg-green-700 active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+                        {isFormValid() ? '確認送出 (資料完整)' : '請填寫所有必填欄位'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- 5.1 MainPOS (主系統 - 終極防重覆列印版) ---
 const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings }) => {
@@ -1776,6 +2060,14 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
     const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
     const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
 
+    // 用來存回報資料的雲端位置
+    const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
+    
+    // 暫存的佇列 (存在本地即可，或是雲端也可以，這裡先存本地 LocalStorage 以防重新整理消失)
+    const [pendingFeedbacks, setPendingFeedbacks] = useStickyState([], `pending_feedbacks_${currentStore.id}`);
+    
+    // 控制目前要填寫哪一筆回報
+    const [activeFeedbackData, setActiveFeedbackData] = useState(null);
     const [selectedTable, setSelectedTable] = useState(null);
     const [checkoutTable, setCheckoutTable] = useState(null);
     const [currentView, setCurrentView] = useState('home');
@@ -1956,7 +2248,15 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
         }
 
         setCheckoutTable(null);
-        alert(`✅ 桌號 ${targetTableId} 結帳完成！\n會員積點已更新。`);
+        // 原本只有 alert，現在改為設定 activeFeedbackData 來打開視窗
+        const feedbackInitData = {
+            id: targetTableId, // 用桌號當 ID
+            adults: paymentData.adults,
+            children: paymentData.children,
+            finalTotal: paymentData.finalTotal,
+            timestamp: Date.now()
+        };
+        setActiveFeedbackData(feedbackInitData);
     };
 
     const handleUpdateMember = (updatedMember) => { setMembers(prevMembers => { const exists = prevMembers.some(m => m.phone === updatedMember.phone); if (exists) { return prevMembers.map(m => m.phone === updatedMember.phone ? updatedMember : m); } else { return [...prevMembers, updatedMember]; } }); };
@@ -2000,7 +2300,9 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
                 alert("請登出後，使用該分店帳號登入以進行現場操作。");
             }} 
             onLogout={onLogout} 
-            categories={categories} setCategories={setCategories} 
+            categories={categories} setCategories={setCategories}
+            hiddenCategories={hiddenCategories} 
+            setHiddenCategories={setHiddenCategories} 
             memberLogs={memberLogs} salesLogs={salesLogs} 
             stockStatus={stockStatus} setStockStatus={setStockStatus}
             tipLogs={tipLogs} 
@@ -2014,7 +2316,41 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
         console.log("自動提醒功能已被徹底閹割，保障桌子安全");
         return; 
     };
+// ==========================================
+    // ★★★ 補上這兩段遺失的函式 (回饋處理) ★★★
+    // ==========================================
 
+    // 1. 提交回報 (寫入 Firebase 並清除暫存)
+    const handleFeedbackSubmit = (data) => {
+        // 寫入雲端資料庫 (利用 MainPOS 已經有的 setFeedbackLogs)
+        setFeedbackLogs(prev => [data, ...prev]);
+        
+        // 清理暫存：如果這筆是來自暫存列的，要把它移除
+        // 使用 tableId 來比對 (因為你在 CheckoutModal 設定 activeFeedbackData 時是用 tableId 當 id)
+        if (pendingFeedbacks.some(p => p.id === data.tableId)) {
+             setPendingFeedbacks(prev => prev.filter(p => p.id !== data.tableId));
+        } 
+        // 或是比對時間戳記 (雙重保險)
+        else if (activeFeedbackData && pendingFeedbacks.some(p => p.timestamp === activeFeedbackData.timestamp)) {
+             setPendingFeedbacks(prev => prev.filter(p => p.timestamp !== activeFeedbackData.timestamp));
+        }
+
+        setActiveFeedbackData(null); // 關閉視窗
+        alert("✅ 顧客回饋已記錄！");
+    };
+
+    // 2. 暫存回報 (放入待辦鈴鐺)
+    const handleFeedbackDefer = () => {
+        if (!activeFeedbackData) return;
+        
+        // 檢查是否已經在佇列中，避免重複
+        const exists = pendingFeedbacks.some(p => p.timestamp === activeFeedbackData.timestamp);
+        if (!exists) {
+            setPendingFeedbacks(prev => [...prev, activeFeedbackData]);
+        }
+        
+        setActiveFeedbackData(null); // 關閉視窗，讓鈴鐺去顯示紅點
+    };
     // ★★★ 絕對防禦版 renderHome：防止白屏 ★★★
     const renderHome = () => {
         if (!tables) {
@@ -2104,6 +2440,25 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
                         <button onClick={playSound} className="bg-red-50 text-white px-3 py-1 rounded font-bold hover:bg-red-600 active:scale-95 transition-transform shadow-sm">
                             🔊 測試音效
                         </button>
+                        <div className="relative ml-2">
+                            <button 
+                               onClick={() => {
+                                   if(pendingFeedbacks.length === 0) return alert("目前沒有待補的回報事項");
+                                   // 取出第一筆來填寫
+                                   const next = pendingFeedbacks[0];
+                                   setActiveFeedbackData(next);
+                               }} 
+                               className={`p-2 rounded-full transition-colors border ${pendingFeedbacks.length > 0 ? 'bg-red-50 border-red-200 text-red-600 animate-pulse' : 'bg-gray-50 border-gray-200 text-gray-400'}`}
+                               title="待回報清單"
+                           >
+                               <MessageCircle size={24} />
+                              {pendingFeedbacks.length > 0 && (
+                                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                                      {pendingFeedbacks.length}
+                                  </span>
+                              )}
+                           </button>
+                        </div>
                         <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-bold">分店代碼: {currentStore.id}</span>
                         <span className="flex items-center gap-1"><Wifi size={16} className="text-green-500"/> 連線正常</span>
                         <span>{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -2132,6 +2487,15 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
                     onUpdateMember={handleUpdateMember}
                     printers={printers} 
                 />}
+                {activeFeedbackData && (
+                    <TableFeedbackModal 
+                        tableInfo={activeFeedbackData}
+                        storeId={currentStore.id}
+                        onClose={() => setActiveFeedbackData(null)} // 強制關閉
+                        onSubmit={handleFeedbackSubmit}
+                        onDefer={handleFeedbackDefer} // 稍後填寫
+                    />
+                )}
             </div>
         </div>
     );
@@ -2249,12 +2613,26 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
 };
 
 // =======================================================
-// ★★★ 3. (子元件) 高階菜單管理器 (含小孩價格設定！) ★★★
+// ★★★ 3. (子元件) 高階菜單管理器 (含隱藏分類功能) ★★★
 // =======================================================
-const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategories, diningPlans, setDiningPlans, storesConfig }) => {
-    const [activeCategory, setActiveCategory] = useState(categories[0] || '全部');
+// 注意：參數這裡我已經幫您加上 hiddenCategories 和 setHiddenCategories 了
+const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategories, diningPlans, setDiningPlans, storesConfig, hiddenCategories, setHiddenCategories }) => {
+    // 預設選中 'All'
+    const [activeCategory, setActiveCategory] = useState('All');
     const [editingItem, setEditingItem] = useState(null);
     const [viewMode, setViewMode] = useState('items');
+
+    // 切換分類隱藏狀態的函式
+    const toggleCategoryVisibility = (cat) => {
+        const currentHidden = hiddenCategories || [];
+        if (currentHidden.includes(cat)) {
+            // 如果已經隱藏，就移除 (變為公開)
+            setHiddenCategories(currentHidden.filter(c => c !== cat));
+        } else {
+            // 如果沒隱藏，就加入 (變為隱藏)
+            setHiddenCategories([...currentHidden, cat]);
+        }
+    };
 
     const handlePlanSelection = (currentPlans, planId, isChecked) => {
         if (!isChecked) return currentPlans.filter(id => id !== planId);
@@ -2339,6 +2717,8 @@ const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategor
         );
     };
 
+    const filteredItems = menuItems.filter(i => activeCategory === 'All' || i.category === activeCategory);
+
     return (
         <div className="p-6 h-full overflow-y-auto bg-gray-50 flex flex-col">
             <div className="flex justify-between items-center mb-6">
@@ -2347,7 +2727,7 @@ const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategor
                     <button onClick={()=>setViewMode('plans')} className={`px-4 py-2 rounded-lg font-bold transition-colors ${viewMode==='plans'?'bg-blue-600 text-white':'text-gray-500 hover:bg-gray-100'}`}>方案設定</button>
                     <button onClick={()=>setViewMode('categories')} className={`px-4 py-2 rounded-lg font-bold transition-colors ${viewMode==='categories'?'bg-purple-600 text-white':'text-gray-500 hover:bg-gray-100'}`}>分類排序</button>
                 </div>
-                {viewMode === 'items' && <button onClick={()=>setEditingItem({ name:'', price:0, category:activeCategory, allowedPlans: diningPlans.map(p=>p.id), excludedStores:[], showInCustomerQR:true, showInStaffPad:true })} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-green-700 flex items-center gap-2"><Plus size={18}/> 新增菜色</button>}
+                {viewMode === 'items' && <button onClick={()=>setEditingItem({ name:'', price:0, category:categories[0], allowedPlans: diningPlans.map(p=>p.id), excludedStores:[], showInCustomerQR:true, showInStaffPad:true })} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-green-700 flex items-center gap-2"><Plus size={18}/> 新增菜色</button>}
                 {viewMode === 'plans' && <button onClick={handleAddPlan} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow"><Plus size={18}/> 新增方案</button>}
                 {viewMode === 'categories' && <button onClick={handleAddCategory} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold shadow"><Plus size={18}/> 新增分類</button>}
             </div>
@@ -2355,17 +2735,25 @@ const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategor
             {viewMode === 'items' && (
                 <>
                     <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
-                        {categories.map(cat => (
-                            <button key={cat} onClick={()=>setActiveCategory(cat)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold border-2 transition-all ${activeCategory===cat ? 'bg-orange-500 border-orange-500 text-white shadow-lg scale-105' : 'bg-white border-gray-200 text-gray-500 hover:border-orange-300'}`}>{cat}</button>
-                        ))}
+                        {['All', ...categories].map(cat => {
+                            // 判斷該分類是否被隱藏
+                            const isHidden = (hiddenCategories || []).includes(cat);
+                            return (
+                                <button key={cat} onClick={()=>setActiveCategory(cat)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold border-2 transition-all flex items-center gap-2 ${activeCategory===cat ? 'bg-orange-500 border-orange-500 text-white shadow-lg scale-105' : 'bg-white border-gray-200 text-gray-500 hover:border-orange-300'}`}>
+                                    {cat === 'All' ? '全部菜色' : cat}
+                                    {/* 在分類按鈕上也顯示小眼睛，方便辨識 */}
+                                    {isHidden && cat !== 'All' && <EyeOff size={14} className="opacity-70" />}
+                                </button>
+                            )
+                        })}
                     </div>
                     <div className="flex-grow overflow-y-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-2">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 text-gray-500 text-sm border-b sticky top-0"><tr><th className="p-3">菜名</th><th className="p-3">價格方案</th><th className="p-3">隱藏狀態</th><th className="p-3 text-right">操作</th></tr></thead>
                             <tbody className="divide-y">
-                                {menuItems.filter(i => i.category === activeCategory).map(item => (
+                                {filteredItems.map(item => (
                                     <tr key={item.id} className="hover:bg-orange-50 transition-colors group">
-                                        <td className="p-3 font-bold text-gray-800">{item.name} {item.price>0 && <span className="text-red-500 text-xs">+${item.price}</span>}</td>
+                                        <td className="p-3 font-bold text-gray-800">{item.name} {item.price>0 && <span className="text-red-500 text-xs">+${item.price}</span>} <span className="text-xs text-gray-400">({item.category})</span></td>
                                         <td className="p-3"><div className="flex flex-wrap gap-1">{diningPlans.map(p => (<span key={p.id} className={`w-2 h-2 rounded-full ${(item.allowedPlans||[]).includes(p.id) ? 'bg-green-500' : 'bg-gray-200'}`} title={p.name}></span>))}<span className="text-xs text-gray-400 ml-1">({(item.allowedPlans||[]).length})</span></div></td>
                                         <td className="p-3 text-xs">{(!item.showInCustomerQR) && <span className="bg-red-100 text-red-600 px-1 rounded mr-1">客隱</span>}{(!item.showInStaffPad) && <span className="bg-purple-100 text-purple-600 px-1 rounded mr-1">員隱</span>}{(item.excludedStores||[]).length > 0 && <span className="bg-gray-200 text-gray-600 px-1 rounded">{item.excludedStores.length}店不賣</span>}</td>
                                         <td className="p-3 text-right"><button onClick={()=>setEditingItem(item)} className="p-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 mr-2"><Edit3 size={16}/></button><button onClick={()=>{if(window.confirm('確定刪除？')) setMenuItems(prev=>prev.filter(i=>i.id!==item.id))}} className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100"><Trash2 size={16}/></button></td>
@@ -2378,13 +2766,43 @@ const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategor
             )}
 
             {viewMode === 'plans' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{diningPlans.sort((a,b)=>a.price-b.price).map(plan => (<div key={plan.id} className="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-blue-500 relative group"><div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={()=>{if(window.confirm('確定刪除此方案？')) setDiningPlans(prev=>prev.filter(p=>p.id!==plan.id))}} className="text-red-400 hover:text-red-600"><Trash2/></button></div>
-            {/* 小孩價格輸入框 */}
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div><label className="text-xs font-bold text-gray-400">大人價格</label><input type="number" className="w-full text-2xl font-bold text-blue-600 border-b border-dashed focus:border-blue-500 outline-none" value={plan.price} onChange={e=>handleUpdatePlan(plan.id, 'price', parseInt(e.target.value))} /></div>
                 <div><label className="text-xs font-bold text-gray-400">小孩價格</label><input type="number" className="w-full text-2xl font-bold text-green-600 border-b border-dashed focus:border-green-500 outline-none" value={plan.childPrice || 0} onChange={e=>handleUpdatePlan(plan.id, 'childPrice', parseInt(e.target.value))} /></div>
             </div>
             <div className="mb-4"><label className="text-xs font-bold text-gray-400">方案名稱</label><input className="w-full text-xl font-bold border-b border-dashed focus:border-blue-500 outline-none" value={plan.name} onChange={e=>handleUpdatePlan(plan.id, 'name', e.target.value)} /></div><div className="text-xs text-gray-400">包含菜色: {menuItems.filter(i=>(i.allowedPlans||[]).includes(plan.id)).length} 道</div></div>))}</div>}
-            {viewMode === 'categories' && <div className="bg-white p-6 rounded-2xl shadow-sm max-w-lg mx-auto w-full"><div className="space-y-2">{categories.map((cat, idx) => (<div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200"><span className="font-bold text-gray-700">{idx+1}. {cat}</span><button onClick={()=>{if(window.confirm('刪除此分類？')) setCategories(prev=>prev.filter(c=>c!==cat))}} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button></div>))}</div></div>}
+            
+            {/* ★★★ 這裡就是「分類管理」的區塊，我們加上了隱藏按鈕 ★★★ */}
+            {viewMode === 'categories' && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm max-w-lg mx-auto w-full">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Settings size={20}/> 分類顯示管理</h3>
+                    <div className="space-y-2">
+                        {categories.map((cat, idx) => {
+                            const isHidden = (hiddenCategories || []).includes(cat);
+                            return (
+                                <div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-gray-700 w-6">{idx+1}.</span>
+                                        <span className="font-bold text-gray-800 text-lg">{cat}</span>
+                                        
+                                        {/* 這就是切換隱藏的按鈕 */}
+                                        <button 
+                                            onClick={() => toggleCategoryVisibility(cat)}
+                                            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${isHidden ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-100 text-blue-600 border border-blue-200'}`}
+                                        >
+                                            {isHidden ? <><EyeOff size={14}/> 已對客隱藏</> : <><Users size={14}/> 公開</>}
+                                        </button>
+                                    </div>
+                                    <button onClick={()=>{if(window.confirm('刪除此分類？')) setCategories(prev=>prev.filter(c=>c!==cat))}} className="text-gray-400 hover:text-red-600 bg-white p-2 rounded shadow-sm"><Trash2 size={16}/></button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-4 pt-4 border-t text-xs text-gray-400 text-center">
+                        提示：被隱藏的分類及其菜色，在顧客手機端將完全消失，但在員工 POS 端仍可見。
+                    </div>
+                </div>
+            )}
             {renderEditModal()}
         </div>
     );
@@ -2507,9 +2925,68 @@ const HQBookingManager = ({ bookings, storesConfig }) => {
 };
 
 // =======================================================
+// ★★★ 總部：顧客回饋檢視 (HQFeedbackPage) ★★★
+// =======================================================
+const HQFeedbackPage = ({ feedbackLogs, storesConfig }) => {
+    return (
+        <div className="p-8 h-full overflow-y-auto bg-gray-50">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <MessageCircle className="text-orange-600"/> 顧客用餐反饋列表
+            </h2>
+            <div className="grid grid-cols-1 gap-4">
+                {(feedbackLogs || []).length === 0 ? (
+                    <div className="text-center text-gray-400 py-20">尚無回饋資料</div>
+                ) : (
+                    feedbackLogs.sort((a,b)=>b.timestamp-a.timestamp).map(log => (
+                        <div key={log.id} className="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-orange-500 animate-fade-in-up">
+                            {/* 標頭資訊 */}
+                            <div className="flex justify-between items-start mb-4 border-b pb-2">
+                                <div className="flex gap-3 items-center">
+                                    <span className="bg-gray-800 text-white px-3 py-1 rounded-lg font-bold text-sm">
+                                        {storesConfig[log.storeId]?.name || log.storeId}
+                                    </span>
+                                    <span className="text-gray-500 font-mono text-sm">
+                                        {new Date(log.timestamp).toLocaleString()}
+                                    </span>
+                                    <span className="font-bold text-lg text-gray-700">
+                                        桌號: {log.tableId}
+                                    </span>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-orange-600">{log.q1_name} 先生/小姐</div>
+                                    <div className="text-sm text-gray-500">{log.q2_phone}</div>
+                                </div>
+                            </div>
+
+                            {/* 10題詳細內容 (格狀排列) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">人數/金額</span><span className="font-bold">{log.q3_paxPrice}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">來源</span><span className="font-bold">{log.q4_source}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">來訪紀錄</span><span className="font-bold">{log.q5_visit}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">用餐目的</span><span className="font-bold">{log.q6_purpose}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">餐點品質</span><span className={`font-bold ${log.q7_quality?.includes('不滿意')||log.q7_quality?.includes('反應') ? 'text-red-600' : 'text-gray-800'}`}>{log.q7_quality}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">最愛餐點</span><span className="font-bold">{log.q8_fav}</span></div>
+                                <div className="bg-gray-50 p-2 rounded border"><span className="text-gray-400 block text-xs">服務感受</span><span className="font-bold">{log.q9_service}</span></div>
+                            </div>
+                            
+                            {/* 第10題：建議 (獨立一行) */}
+                            <div className="mt-4 bg-orange-50 p-4 rounded-xl border border-orange-100">
+                                <span className="text-orange-400 block text-xs font-bold mb-1">整體反饋與建議</span>
+                                <p className="font-bold text-gray-800 text-lg whitespace-pre-wrap">{log.q10_suggestion}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+// =======================================================
 // ★★★ 5. (主程式) 總部後台主入口 (完整整合版) ★★★
 // =======================================================
-const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, storeEmployees, setStoreEmployees, clockLogs, members, setMembers, coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings }) => {
+// ★★★ 修正點：這裡的參數列補上了 hiddenCategories 和 setHiddenCategories ★★★
+const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, storeEmployees, setStoreEmployees, clockLogs, members, setMembers, coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings, feedbackLogs, hiddenCategories, setHiddenCategories }) => {
     const [activeTab, setActiveTab] = useState('report'); 
     const [selectedStoreForEmp, setSelectedStoreForEmp] = useState('001');
     const [newEmpName, setNewEmpName] = useState('');
@@ -2545,6 +3022,9 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
                     <button onClick={() => setActiveTab('menu')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'menu' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><Utensils size={20}/> 菜單設定</button>
                     <button onClick={() => setActiveTab('bookings')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'bookings' ? 'bg-teal-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><ClipboardList size={20}/> 訂位總管</button>
                     <button onClick={() => setActiveTab('crm')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'crm' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><Users size={20}/> 會員 CRM</button>
+                    <button onClick={() => setActiveTab('feedback')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'feedback' ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+                        <MessageCircle size={20}/> 顧客意見
+                    </button>
                 </nav>
                 <div className="p-4 border-t border-gray-800"><button onClick={onLogout} className="w-full bg-gray-800 text-gray-300 py-3 rounded-xl font-bold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"><LogOut size={18}/> 登出系統</button></div>
             </div>
@@ -2553,11 +3033,19 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
                 {activeTab === 'daily_reports' && <HQDailyReportView storesConfig={storesConfig} />}
                 {activeTab === 'stores' && <div className="p-8 h-full overflow-y-auto"><div className="flex justify-between items-center mb-6"><h2 className="text-3xl font-bold text-gray-800">🏪 分店設定與管理</h2></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(store => (<div key={store.id} className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all ${editingStoreId === store.id ? 'border-purple-500 ring-2 ring-purple-100' : 'border-transparent'}`}><div className="flex justify-between items-start mb-4"><div className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded text-sm">店號: {store.id}</div>{editingStoreId === store.id ? (<div className="flex gap-2"><button onClick={saveStoreChange} className="text-green-600 bg-green-100 p-2 rounded"><Save size={18}/></button><button onClick={()=>setEditingStoreId(null)} className="text-gray-400 bg-gray-100 p-2 rounded"><X size={18}/></button></div>) : (<button onClick={()=>startEditStore(store)} className="text-gray-400 hover:text-blue-600"><Edit3 size={18}/></button>)}</div><div className="space-y-4"><div><label className="text-xs font-bold text-gray-400">分店名稱</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-bold text-lg outline-none" value={tempStoreData.name} onChange={e=>setTempStoreData({...tempStoreData, name: e.target.value})} /> : <div className="font-bold text-xl">{store.name}</div>}</div><div><label className="text-xs font-bold text-gray-400">密碼</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-mono text-lg outline-none" value={tempStoreData.password} onChange={e=>setTempStoreData({...tempStoreData, password: e.target.value})} /> : <div className="font-mono text-lg text-gray-600">{store.password}</div>}</div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-gray-400">前綴</label>{editingStoreId === store.id ? <input className="w-full border-b outline-none" value={tempStoreData.tablePrefix} onChange={e=>setTempStoreData({...tempStoreData, tablePrefix: e.target.value})} /> : <div className="font-bold">{store.tablePrefix}</div>}</div><div><label className="text-xs font-bold text-gray-400">桌數</label>{editingStoreId === store.id ? <input type="number" className="w-full border-b outline-none" value={tempStoreData.tableCount} onChange={e=>setTempStoreData({...tempStoreData, tableCount: parseInt(e.target.value)})} /> : <div className="font-bold">{store.tableCount} 桌</div>}</div></div></div></div>))}</div></div>}
                 {activeTab === 'employees' && <div className="p-8 h-full overflow-y-auto"><h2 className="text-3xl font-bold mb-6 text-gray-800">👷 員工帳號管理</h2><div className="flex gap-8 items-start"><div className="w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100 sticky top-0"><div className="flex items-center gap-2 mb-6 text-indigo-600"><UserPlus size={24}/><h3 className="font-bold text-xl">新增員工</h3></div><div className="space-y-5"><div><label className="block text-sm font-bold text-gray-500 mb-2">歸屬分店</label><select className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500" value={selectedStoreForEmp} onChange={e=>setSelectedStoreForEmp(e.target.value)}>{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div><div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div><button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button></div></div><div className="w-2/3"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-600">{storesConfig[selectedStoreForEmp]?.name} - 員工名單</h3><span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">共 {(storeEmployees[selectedStoreForEmp]||[]).length} 人</span></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{(storeEmployees[selectedStoreForEmp]||[]).length === 0 && <div className="col-span-2 py-10 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">尚未建立員工資料</div>}{(storeEmployees[selectedStoreForEmp]||[]).map(emp=>(<div key={emp.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 border-indigo-500 group hover:shadow-md transition-shadow"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-bold">{emp.name.charAt(0)}</div><div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-400">密碼: {emp.password}</div></div></div><div className="flex gap-2"><button onClick={()=>setQrModalEmp(emp)} className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="顯示打賞 QR Code"><QrCode size={20}/></button><button onClick={()=>handleDeleteEmployee(emp.id)} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={20}/></button></div></div>))}</div></div></div></div>}
-                {/* ★★★ 5. 菜單設定 (正確呼叫 HQAdvancedMenuManager) ★★★ */}
-                {activeTab === 'menu' && <HQAdvancedMenuManager menuItems={menuItems} setMenuItems={setMenuItems} categories={categories} setCategories={setCategories} diningPlans={diningPlans} setDiningPlans={setDiningPlans} storesConfig={storesConfig} />}
-                {/* ★★★ 6. 訂位總管 (正確呼叫 HQBookingManager) ★★★ */}
+                
+                {/* ★★★ 5. 菜單設定 (這裡需要傳遞正確的參數) ★★★ */}
+                {activeTab === 'menu' && <HQAdvancedMenuManager 
+                    menuItems={menuItems} setMenuItems={setMenuItems} 
+                    categories={categories} setCategories={setCategories} 
+                    diningPlans={diningPlans} setDiningPlans={setDiningPlans} 
+                    storesConfig={storesConfig} 
+                    hiddenCategories={hiddenCategories} setHiddenCategories={setHiddenCategories} 
+                />}
+                
                 {activeTab === 'bookings' && <HQBookingManager bookings={bookings} storesConfig={storesConfig} />}
                 {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} setMembers={setMembers} onUpdateMember={()=>{}} coupons={coupons} setCoupons={setCoupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} />}
+                {activeTab === 'feedback' && <HQFeedbackPage feedbackLogs={feedbackLogs} storesConfig={storesConfig} />}
             </div>
             {qrModalEmp && (<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setQrModalEmp(null)}><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-bounce-in" onClick={e=>e.stopPropagation()}><div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-bold text-orange-600">{qrModalEmp.name.charAt(0)}</div><h3 className="text-2xl font-bold text-gray-800">{qrModalEmp.name}</h3><p className="text-gray-500 mb-6">專屬打賞 QR Code</p><div className="bg-white p-2 rounded-xl border-4 border-orange-500 inline-block mb-4 shadow-inner"><canvas id="emp-qr-canvas" className="w-64 h-64"></canvas></div><p className="text-xs text-gray-400 mb-6 px-4">請顧客使用手機掃描上方條碼<br/>即可進入打賞頁面</p><button onClick={()=>setQrModalEmp(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-bold w-full">關閉視窗</button></div></div>)}
         </div>
@@ -2604,6 +3092,9 @@ export default function App() {
   const [storeEmployees, setStoreEmployees] = useFirebaseState('pos_data', 'employees', INITIAL_STORE_EMPLOYEES);
   const [memberAppSettings, setMemberAppSettings] = useFirebaseState('pos_data', 'app_settings', INITIAL_MEMBER_APP_SETTINGS);
   
+  // ★★★ 關鍵：這裡宣告了隱藏分類的狀態 ★★★
+  const [hiddenCategories, setHiddenCategories] = useFirebaseState('pos_data', 'hidden_categories', []);
+  
   // 2. 行銷與優惠 (雲端)
   const [coupons, setCoupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
   const [slotPrizes, setSlotPrizes] = useFirebaseState('pos_data', 'slot_prizes', INITIAL_SLOT_PRIZES);
@@ -2617,6 +3108,7 @@ export default function App() {
   const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
   const [salesLogs, setSalesLogs] = useFirebaseState('pos_data', 'sales_logs', []);
   const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
+  const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
 
   const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || '003'}`, INITIAL_PRINTERS);
 
@@ -2630,7 +3122,7 @@ export default function App() {
 
   // Tip Page Render
   if (isTipMode && employeeId) {
-     return <TipWrapper storeId={urlStoreId} employeeId={employeeId} storesConfig={storesConfig} onAddTip={(tip) => setTipLogs(prev => [tip, ...prev])} />;
+      return <TipWrapper storeId={urlStoreId} employeeId={employeeId} storesConfig={storesConfig} onAddTip={(tip) => setTipLogs(prev => [tip, ...prev])} />;
   }
 
   // ★★★ 顧客點餐模式判斷 ★★★
@@ -2657,7 +3149,8 @@ export default function App() {
   // 總部模式
   if (isHQMode) {
       return (
-          <HQDashboard 
+          <HQDashboard
+              feedbackLogs={feedbackLogs} 
               diningPlans={diningPlans} setDiningPlans={setDiningPlans} 
               menuItems={menuItems} setMenuItems={setMenuItems}
               memberAppSettings={memberAppSettings} setMemberAppSettings={setMemberAppSettings}
@@ -2667,6 +3160,11 @@ export default function App() {
               members={members} setMembers={setMembers}
               coupons={coupons} setCoupons={setCoupons}
               categories={categories} setCategories={setCategories}
+              
+              // ★★★ 傳遞給 HQDashboard ★★★
+              hiddenCategories={hiddenCategories} 
+              setHiddenCategories={setHiddenCategories}
+
               memberLogs={memberLogs} 
               salesLogs={salesLogs} setSalesLogs={setSalesLogs}
               stockStatus={stockStatus} setStockStatus={setStockStatus}
@@ -2702,7 +3200,7 @@ const TipWrapper = ({ storeId, employeeId, storesConfig, onAddTip }) => {
 };
 
 // =======================================================
-// ★★★ 修正版 CustomerWrapper：解決無法切換會員中心與註冊的問題 ★★★
+// ★★★ 9. 補回遺失的 CustomerWrapper (沒這個客人會白屏) ★★★
 // =======================================================
 const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
     // 1. 讀取分店桌況 (給點餐用)
@@ -2712,15 +3210,17 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
     const [categories] = useFirebaseState('pos_data', 'categories', INITIAL_CATEGORIES);
     const [stockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
 
-    // 2. ★★★ 新增：讀取會員資料 (給會員中心用，修復註冊功能) ★★★
+    // 2. 讀取會員資料
     const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
     const [coupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
     const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
 
-    // 3. 視圖切換狀態
-    const [viewMode, setViewMode] = useState('menu'); // 'menu' or 'member'
+    // ★★★ 3. 關鍵修正：這裡原本漏掉了讀取隱藏分類的資料 ★★★
+    const [hiddenCategories] = useFirebaseState('pos_data', 'hidden_categories', []);
 
-    // 4. 更新會員資料 (註冊或兌換)
+    // 4. 視圖切換狀態
+    const [viewMode, setViewMode] = useState('menu'); 
+
     const handleUpdateMember = (updatedMember) => {
         setMembers(prevMembers => {
             const exists = prevMembers.some(m => m.phone === updatedMember.phone);
@@ -2748,7 +3248,7 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
         );
     }
 
-    // 呼叫原本的 CustomerOrderPage，並傳入正確的切換函數
+    // 呼叫原本的 CustomerOrderPage
     return (
         <CustomerOrderPage 
             tableId={tableId} 
@@ -2762,6 +3262,8 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
             stockStatus={stockStatus} 
             onGoToMember={() => setViewMode('member')} 
             printerConfig={printerConfig}
+            // ★★★ 現在這裡有 hiddenCategories 可以傳下去了 ★★★
+            hiddenCategories={hiddenCategories || []}
         />
     );
 };
