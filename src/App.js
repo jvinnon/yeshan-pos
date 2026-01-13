@@ -54,6 +54,10 @@ const BRANCH_PRINTER_CONFIGS = {
     { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.147', type: 'receipt', status: 'unknown' },
     { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.115', type: 'kitchen', status: 'unknown' }
   ],
+  '002': [
+    { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.123.100', type: 'receipt', status: 'unknown' },
+    { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.123.100', type: 'kitchen', status: 'unknown' }
+  ],
   '003': [
     { id: 'counter', name: '櫃台 QR Code (印表機)', ip: '192.168.1.176', type: 'receipt', status: 'unknown' },
     { id: 'kitchen_hot', name: '廚房出單機 (印表機)', ip: '192.168.1.180', type: 'kitchen', status: 'unknown' }
@@ -416,12 +420,21 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
     const filteredItems = (menuItems || []).filter(item => { 
         if (item.onlyForStaff === true) return false; 
         
-        // 檢查：如果該菜色的分類在隱藏名單中，就不顯示
-        if ((hiddenCategories || []).includes(item.category)) return false;
+        // 修正點：確保 hiddenCategories 存在才執行
+        if (hiddenCategories && hiddenCategories.includes(item.category)) return false;
+
+        if (item.showInCustomerQR === false) return false;
 
         if (activeCategory !== 'All' && item.category !== activeCategory) return false; 
+        
+        // 修正點：這裡要確保 currentPlan 已經定義（你原本代碼應該有定義在上面）
         if (item.price === 0 && !item.allowedPlans?.includes(currentPlan.id)) return false; 
+        
         if (stockStatus && stockStatus[storeId]?.[item.id] === true) return false; 
+        
+        // 修正點：這行的變數名稱要跟參數一致
+        if (item.excludedStores && item.excludedStores.includes(storeId)) return false;
+
         return true; 
     });
 
@@ -448,6 +461,11 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
         setTables(prev => prev.map(t => { if (t.id === tableId) { const newOrders = [...(t.orders || []), ...ordersToSave]; return { ...t, orders: newOrders, lastBatchTime: timestamp }; } return t; })); 
         
         const currentStoreId = storeId || '003';
+        const KITCHEN_IP_MAP = {
+            '001': '192.168.1.115', // 七賢總店
+            '002': '192.168.123.100', // 鳳山店 (請填入鳳山的廚房 IP，例如 192.168.1.200)
+            'branch3': '192.168.1.180', // 楠梓店
+        };
         const fallbackIp = currentStoreId === '001' ? '192.168.1.115' : '192.168.1.180';
         const API_BASE = STORE_URLS[currentStoreId] || ''; 
         const targetIp = printerConfig?.find(p => p.type === 'kitchen')?.ip || fallbackIp; 
@@ -538,17 +556,61 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
     );
 };
 
-const MenuPage = ({ tables, menuItems, categories, setTables, printers, currentStore, stockStatus }) => {
+// 修正版：保留方案與隱藏邏輯，並修正變數錯誤
+const MenuPage = ({ tables, menuItems, categories, setTables, printers, currentStore, stockStatus, hiddenCategories }) => {
     const [activeCategory, setActiveCategory] = useState('All');
     const [addedId, setAddedId] = useState(null);
     const [cart, setCart] = useState([]);
     const [selectedTableId, setSelectedTableId] = useState('');
-    const safeStockStatus = stockStatus || {};
     const [showDrawerAuth, setShowDrawerAuth] = useState(false);
     const [drawerPwd, setDrawerPwd] = useState(''); 
 
-    const filteredItems = (menuItems || []).filter(item => { if (activeCategory !== 'All' && item.category !== activeCategory) return false; return safeStockStatus[currentStore.id]?.[item.id] !== true; });
-    const handleAddToCart = (item) => { setAddedId(item.id); setCart(prev => { const existing = prev.find(i => i.id === item.id); if (existing) return prev.map(i => i.id === item.id ? { ...i, count: i.count + 1 } : i); return [...prev, { ...item, count: 1 }]; }); setTimeout(() => setAddedId(null), 300); };
+    // 取得當前選中桌位的資料，用來判斷該桌的方案
+    const selectedTableData = tables.find(t => t.id === selectedTableId);
+
+    const filteredItems = (menuItems || []).filter(item => { 
+        // 1. 分類選擇篩選 (全部/特定分類)
+        if (activeCategory !== 'All' && item.category !== activeCategory) return false; 
+
+        // 2. 隱藏分類過濾 (補回邏輯：確保定義)
+        const safeHidden = hiddenCategories || [];
+        if (safeHidden.includes(item.category)) return false;
+
+        // 3. 庫存檢查 (修正：使用 currentStore.id)
+        if (stockStatus && stockStatus[currentStore.id]?.[item.id] === true) return false; 
+
+        // 4. 分店排除檢查 (修正：使用 currentStore.id)
+        if (item.excludedStores && item.excludedStores.includes(currentStore.id)) return false; 
+
+        // 5. 方案檢查 (補回邏輯)
+        // 如果有選桌子，且該菜色是 0 元(吃到飽品項)，則檢查方案是否允許
+        if (selectedTableData && item.price === 0) {
+            if (item.allowedPlans && !item.allowedPlans.includes(selectedTableData.plan)) {
+                return false; 
+            }
+        }
+    
+        return true; 
+    });
+
+    // --- 統一後的店員端點餐邏輯 ---
+const handleAddToCart = (item) => { 
+    // 檢查購物車內是否已經有這道菜
+    const existing = cart.find(i => i.id === item.id); 
+    
+    if (existing) { 
+        // 如果有了，就不准加，並跳出警告
+        alert(`⚠️ "${item.name}" 已經在購物車了！\n店員模式目前也統一限制每項限點 1 份。`); 
+        return; 
+    } 
+    
+    // 如果沒有重複，才加入購物車，數量固定為 1
+    setAddedId(item.id); 
+    setCart(prev => [...prev, { ...item, count: 1 }]); 
+    
+    // 綠色外框閃爍動畫
+    setTimeout(() => setAddedId(null), 300); 
+};
     const handleRemoveFromCart = (itemId) => { setCart(prev => prev.filter(i => i.id !== itemId)); };
     
     const handleSendToKitchen = async () => { 
@@ -1544,14 +1606,54 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
     );
 };
 // =======================================================
-// ★★★ 修正版 CheckoutModal：加入餐點明細列表 ★★★
+// ★★★ 最終強製拉霸版 CheckoutModal ★★★
 // =======================================================
+const slotStyles = `
+  @keyframes scroll-reel {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-80%); } /* 捲動 80% 的長度 */
+  }
+  .animate-slot-scroll {
+    animation: scroll-reel 0.15s linear infinite;
+  }
+  .reel-container {
+    height: 120px; 
+    overflow: hidden;
+    background: white;
+    border-radius: 16px;
+    border: 4px solid #f59e0b;
+    width: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: inset 0 8px 15px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  /* 增加遮罩讓光影更真實 */
+  .reel-container::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(rgba(0,0,0,0.2) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%);
+    z-index: 10; pointer-events: none;
+  }
+  .reel-strip {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+  }
+  .reel-icon {
+    font-size: 60px;
+    height: 120px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+`;
+
 const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons, members, slotPrizes, onUpdateMember, printers, storeId }) => {
     const plan = diningPlans.find(p => p.id === table.plan) || { name: '未知方案', price: 0, childPrice: 0 };
     const subtotal = (table.adults * plan.price) + (table.children * plan.childPrice);
     const serviceFee = Math.round(subtotal * 0.1);
-    
-    // 計算已點餐點中的小費
     const tipTotal = (table.orders || []).filter(o => o.category === 'Tip').reduce((sum, item) => sum + (parseInt(item.price) || 0), 0);
     
     const [memberPhone, setMemberPhone] = useState('');
@@ -1560,23 +1662,28 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
     const [receivedAmount, setReceivedAmount] = useState('');
     const [discountCode, setDiscountCode] = useState('');
     const [customDiscount, setCustomDiscount] = useState({ type: 'none', val: 0 }); 
-    const [cashDrawerEnabled] = useStickyState(false, 'pos_cash_drawer_enabled'); 
-    
-    const [paymentMethod, setPaymentMethod] = useState('現金'); 
+    const [paymentMethod, setPaymentMethod] = useState('現金');
+// ★★★ 請插入這段補救代碼 (修復 getDiscountDisplay 錯誤) ★★★
+    const getDiscountDisplay = () => {
+        if (customDiscount.type === 'amount') return parseInt(customDiscount.val || 0);
+        if (customDiscount.type === 'percent') {
+            const discountRate = (100 - parseInt(customDiscount.val || 100)) / 100; // 例如打9折 = 10% off
+            return Math.round(subtotal * discountRate);
+        }
+        if (customDiscount.type === 'single') {
+            const discountRate = (100 - parseInt(customDiscount.val || 100)) / 100;
+            return Math.round(plan.price * discountRate);
+        }
+        return 0;
+    };
+
+    // --- 🎰 拉霸機專用狀態 ---
     const [showSlotMachine, setShowSlotMachine] = useState(false);
     const [isSpinning, setIsSpinning] = useState(false);
     const [spinResult, setSpinResult] = useState(null);
     const [slotPrizeDiscount, setSlotPrizeDiscount] = useState(0);
-    const [currentIcon, setCurrentIcon] = useState('🎰');
-
-    useEffect(() => {
-        let interval;
-        if (isSpinning) {
-            const icons = ['🍒', '🍋', '🍇', '💎', '7️⃣', '🔔', '🍀', '💰'];
-            interval = setInterval(() => { setCurrentIcon(icons[Math.floor(Math.random() * icons.length)]); }, 100);
-        }
-        return () => clearInterval(interval);
-    }, [isSpinning]);
+    const [reels, setReels] = useState(['🍒', '🍋', '🍇']); // 最終結果
+    const [spinningReels, setSpinningReels] = useState([false, false, false]); // 控制動畫
 
     const calculateDiscount = () => { 
         let totalDisc = 0; 
@@ -1588,43 +1695,66 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
         return totalDisc + slotPrizeDiscount;
     };
     
-    const getDiscountDisplay = () => { 
-        if (customDiscount.type === 'percent') return Math.round(subtotal * (1 - customDiscount.val/100)); 
-        if (customDiscount.type === 'single') return Math.round(plan.price * (1 - customDiscount.val/100)); 
-        return parseInt(customDiscount.val || 0); 
-    }
-
     const finalTotal = Math.max(0, subtotal + serviceFee + tipTotal - calculateDiscount());
     const changeAmount = receivedAmount ? parseInt(receivedAmount) - finalTotal : 0;
     
     const handleSearchMember = () => { const safeMembers = members || []; const member = safeMembers.find(m => m.phone === memberPhone); if (member) setFoundMember(member); else alert('查無此會員'); };
     const applyDiscountCode = () => { const safeCoupons = coupons || []; const coupon = safeCoupons.find(c => c.code === discountCode); if(coupon) setAppliedCoupon(coupon); else alert('無效的代碼'); };
     
+    // --- 🎰 核心：拉霸啟動邏輯 ---
     const handleSpin = () => {
-        setIsSpinning(true); setSpinResult(null);
+        setIsSpinning(true);
+        setSpinResult(null);
+        // 三個輪軸同時啟動 CSS 動畫
+        setSpinningReels([true, true, true]); 
+
         const totalWeight = slotPrizes.reduce((sum, item) => sum + item.weight, 0);
         let random = Math.random() * totalWeight;
         let selectedPrize = slotPrizes[0];
         for (const prize of slotPrizes) { if (random < prize.weight) { selectedPrize = prize; break; } random -= prize.weight; }
-        setTimeout(() => {
-            setIsSpinning(false); setSpinResult(selectedPrize);
-            if (selectedPrize.type === 'current_discount_percent') {
-                const discountRate = selectedPrize.value === 0 ? 0 : selectedPrize.value / 100;
-                const discAmount = selectedPrize.value === 0 ? (subtotal + serviceFee) : Math.round(subtotal * (1 - discountRate));
-                setSlotPrizeDiscount(discAmount);
-            } else if (selectedPrize.type === 'future_coupon') {
-                if (foundMember && onUpdateMember) {
-                    const newCoupon = { id: Date.now(), name: selectedPrize.name, redeemed: false, code: `WIN-${Math.floor(Math.random()*10000)}` };
-                    const updatedMember = { ...foundMember, items: [...foundMember.items, newCoupon] };
-                    onUpdateMember(updatedMember);
-                    setFoundMember(updatedMember);
+
+        let finalIcons = [];
+        // 判斷是否中大獎 (對應 777)
+        if (selectedPrize.id === 'disc_5_next') { 
+            finalIcons = ['7️⃣', '7️⃣', '7️⃣']; 
+        } else if (selectedPrize.id === 'none') {
+            finalIcons = ['🍒', '🍋', '🍇']; // 故意不同
+        } else {
+            finalIcons = [selectedPrize.icon, selectedPrize.icon, selectedPrize.icon];
+        }
+
+        // 分別設定停止時間（創造 1, 2, 3 依序停下的視覺感）
+        [0, 1, 2].forEach((idx) => {
+            setTimeout(() => {
+                setReels(prev => {
+                    const next = [...prev];
+                    next[idx] = finalIcons[idx];
+                    return next;
+                });
+                setSpinningReels(prev => {
+                    const next = [...prev];
+                    next[idx] = false; // 停止動畫，顯示該軸結果
+                    return next;
+                });
+
+                if (idx === 2) {
+                    setIsSpinning(false);
+                    setSpinResult(selectedPrize);
+                    // 執行原本的獎項邏輯
+                    if (selectedPrize.type === 'current_discount_percent') {
+                        const discountRate = selectedPrize.value === 0 ? 0 : selectedPrize.value / 100;
+                        const discAmount = selectedPrize.value === 0 ? (subtotal + serviceFee) : Math.round(subtotal * (1 - discountRate));
+                        setSlotPrizeDiscount(discAmount);
+                    } else if (selectedPrize.type === 'future_coupon' && foundMember) {
+                        const newCoupon = { id: Date.now(), name: selectedPrize.name, redeemed: false, code: `WIN-${Math.floor(Math.random()*10000)}` };
+                        onUpdateMember({ ...foundMember, items: [...(foundMember.items||[]), newCoupon] });
+                    }
                 }
-            }
-        }, 2000);
+            }, 1000 + idx * 800); // 間隔時間拉長，更有緊張感
+        });
     };
 
     const handleConfirm = async () => { 
-        if (cashDrawerEnabled && paymentMethod === '現金') alert('嗶！錢箱已開啟'); 
         const targetConfig = (printers || []).find(p => p.id === 'counter') || printers[0];
         const targetIp = targetConfig ? targetConfig.ip : '192.168.1.176';
         try { 
@@ -1639,14 +1769,48 @@ const CheckoutModal = ({ table, onClose, onConfirmPayment, diningPlans, coupons,
     return (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white w-[1000px] h-[720px] rounded-2xl shadow-2xl flex overflow-hidden relative">
+                
+                {/* 🎰 拉霸機畫面主體 */}
                 {showSlotMachine && (
-                    <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center text-white">
-                        <button onClick={()=>setShowSlotMachine(false)} className="absolute top-4 right-4"><X size={32}/></button>
-                        <h2 className="text-4xl font-bold mb-8 text-yellow-400 animate-pulse">🎰 幸運水果盤 🎰</h2>
-                        <div className="w-64 h-64 bg-white rounded-2xl flex items-center justify-center text-9xl border-8 border-yellow-500 shadow-lg overflow-hidden"><div className={isSpinning ? 'animate-spin-fast' : ''}>{isSpinning ? currentIcon : (spinResult ? spinResult.icon : '🍒')}</div></div>
-                        {spinResult && !isSpinning && <div className="mt-6 text-3xl font-bold text-green-400 animate-bounce">{spinResult.name}</div>}
-                        {!spinResult && !isSpinning && <button onClick={handleSpin} className="mt-8 bg-red-600 hover:bg-red-500 text-white px-12 py-4 rounded-full text-2xl font-bold shadow-lg transform transition active:scale-95">開始抽獎</button>}
-                        {spinResult && !isSpinning && <button onClick={()=>setShowSlotMachine(false)} className="mt-8 bg-gray-600 hover:bg-gray-500 px-8 py-3 rounded-xl font-bold">關閉並領獎</button>}
+                    <div className="absolute inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center text-white rounded-2xl animate-fade-in">
+                        <style>{slotStyles}</style>
+                        <button onClick={()=>setShowSlotMachine(false)} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={40}/></button>
+                        <h2 className="text-5xl font-black mb-12 text-yellow-400 animate-pulse tracking-[0.2em]">🎰 野饌幸運盤 🎰</h2>
+                        
+                        <div className="flex gap-6 p-8 bg-gradient-to-b from-gray-800 to-black rounded-[40px] border-[10px] border-yellow-600 shadow-[0_0_100px_rgba(245,158,11,0.4)]">
+                            {[0, 1, 2].map((i) => (
+                                <div key={i} className="reel-container">
+                                    <div className={`reel-strip ${spinningReels[i] ? 'animate-slot-scroll' : ''}`}>
+                                        {spinningReels[i] ? (
+                                            // 旋轉中：顯示預設的水果帶子
+                                            ['🍒', '🍋', '🍇', '💎', '7️⃣', '🔔', '🍒', '🍋', '🍇', '💎'].map((icon, idx) => (
+                                                <div key={idx} className="reel-icon">{icon}</div>
+                                            ))
+                                        ) : (
+                                            // 停止時：只顯示最終開出來的結果
+                                            <div className="reel-icon animate-bounce-in">{reels[i]}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="h-40 flex flex-col items-center justify-center mt-12">
+                            {spinResult && !isSpinning ? (
+                                <div className="text-center animate-fade-in">
+                                    <div className="text-5xl font-black text-green-400 animate-bounce mb-6">
+                                        {spinResult.id === 'none' ? '銘謝惠顧 😅' : `🎉 ${spinResult.name} 🎉`}
+                                    </div>
+                                    <button onClick={()=>setShowSlotMachine(false)} className="bg-white text-gray-900 px-12 py-4 rounded-2xl font-bold text-2xl shadow-xl hover:scale-105 transition-all">確認領獎</button>
+                                </div>
+                            ) : (
+                                !isSpinning && (
+                                    <button onClick={handleSpin} className="bg-red-600 hover:bg-red-500 text-white px-16 py-6 rounded-full text-4xl font-black shadow-[0_12px_0_rgb(153,27,27)] active:translate-y-2 active:shadow-none transition-all">
+                                        PUSH!
+                                    </button>
+                                )
+                            )}
+                        </div>
                     </div>
                 )}
                 
@@ -1924,6 +2088,7 @@ const TableFeedbackModal = ({ tableInfo, storeId, onClose, onSubmit, onDefer }) 
 const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings }) => {
     // 透過 Store ID 來區分桌位資料
     const [tables, setTables, tablesLoading] = useFirebaseState('pos_data', `tables_${currentStore.id}`, []); 
+    const [hiddenCategories, setHiddenCategories] = useFirebaseState('pos_data', 'hidden_categories', []);
 
     // ★★★ 自動補桌機制 (Auto-Init) ★★★
     // 只要發現資料庫是空的，就自動產生桌子，不用手動按重置
@@ -2466,7 +2631,7 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
                 </div>
                 <div className="h-[calc(100vh-64px)] overflow-hidden">
                     {currentView === 'home' && renderHome()}
-                    {currentView === 'menu' && <MenuPage tables={tables} menuItems={menuItems} categories={categories} setTables={setTables} printers={printers} currentStore={currentStore} stockStatus={stockStatus} setStockStatus={setStockStatus} />}
+                    {currentView === 'menu' && <MenuPage tables={tables} menuItems={menuItems} categories={categories} setTables={setTables} printers={printers} currentStore={currentStore} stockStatus={stockStatus} setStockStatus={setStockStatus} hiddenCategories={hiddenCategories} />}
                     {currentView === 'settings' && <SettingsPage printers={printers} setPrinters={setPrinters} onLogout={onLogout} onResetData={handleResetData} currentStoreId={currentStore.id} setCloudPrinters={setCloudPrinters} />}
                     {currentView === 'member' && <MemberPage memberAppSettings={memberAppSettings} members={members} onUpdateMember={handleUpdateMember} coupons={coupons} addLog={addMemberLog} currentStoreName={currentStore.name} />}
                     {currentView === 'booking' && <BookingPage bookings={bookings} setBookings={setBookings} currentStoreId={currentStore.id} tables={tables} diningPlans={diningPlans} onOpenTable={handleOpenTable} />}
@@ -2983,10 +3148,20 @@ const HQFeedbackPage = ({ feedbackLogs, storesConfig }) => {
 };
 
 // =======================================================
-// ★★★ 5. (主程式) 總部後台主入口 (完整整合版) ★★★
+// ★★★ 5. (主程式) 總部後台主入口 (新增工時對帳表 - 不動原有排版) ★★★
 // =======================================================
-// ★★★ 修正點：這裡的參數列補上了 hiddenCategories 和 setHiddenCategories ★★★
-const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, storeEmployees, setStoreEmployees, clockLogs, members, setMembers, coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings, feedbackLogs, hiddenCategories, setHiddenCategories }) => {
+const HQDashboard = ({ 
+    diningPlans, setDiningPlans, menuItems, setMenuItems, 
+    memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, 
+    storeEmployees, setStoreEmployees, clockLogs, members, setMembers, 
+    coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, 
+    memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, 
+    tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings, 
+    feedbackLogs, 
+    
+    // 👇 已修正：這裡正確接收了隱藏分類的變數
+    hiddenCategories, setHiddenCategories 
+}) => {
     const [activeTab, setActiveTab] = useState('report'); 
     const [selectedStoreForEmp, setSelectedStoreForEmp] = useState('001');
     const [newEmpName, setNewEmpName] = useState('');
@@ -2994,6 +3169,61 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
     const [qrModalEmp, setQrModalEmp] = useState(null); 
     const [editingStoreId, setEditingStoreId] = useState(null);
     const [tempStoreData, setTempStoreData] = useState({});
+
+    // --- 新增：打卡排序與格式化邏輯 (不影響原有排版) ---
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
+    const processClockLogs = () => {
+        const dailyGroups = {};
+        (clockLogs || []).forEach(log => {
+            const dateStr = new Date(log.timestamp).toLocaleDateString('en-CA');
+            const key = `${dateStr}_${log.empId}`; 
+            if (!dailyGroups[key]) {
+                dailyGroups[key] = { date: dateStr, empName: log.empName, storeName: log.storeName, logs: [] };
+            }
+            dailyGroups[key].logs.push({ type: log.type, time: new Date(log.timestamp) });
+        });
+
+        return Object.values(dailyGroups).map(group => {
+            const sortedLogs = group.logs.sort((a, b) => a.time - b.time);
+            let am_in = null, am_out = null, pm_in = null, pm_out = null;
+            let totalMs = 0;
+            let pairCount = 0;
+
+            sortedLogs.forEach(log => {
+                if (log.type === 'in') {
+                    if (pairCount === 0) am_in = log.time; else pm_in = log.time;
+                } else if (log.type === 'out') {
+                    if (pairCount === 0) {
+                        am_out = log.time;
+                        if (am_in) { totalMs += (am_out - am_in); pairCount++; }
+                    } else {
+                        pm_out = log.time;
+                        if (pm_in) totalMs += (pm_out - pm_in);
+                    }
+                }
+            });
+            const hours = totalMs > 0 ? (totalMs / (1000 * 60 * 60)).toFixed(2) : "0.00";
+            return { id: `${group.date}_${group.empName}`, storeName: group.storeName, date: group.date, empName: group.empName, am_in, am_out, pm_in, pm_out, totalHours: hours };
+        });
+    };
+
+    const format24h = (date) => {
+        if (!date) return '--:--';
+        return date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
+    };
+
+    const getSortedClockData = () => {
+        return processClockLogs().sort((a, b) => {
+            if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    };
+
+    const requestSort = (key) => {
+        setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
+    };
 
     useEffect(() => {
         if (qrModalEmp) {
@@ -3005,15 +3235,39 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
         }
     }, [qrModalEmp, selectedStoreForEmp]);
 
-    const handleAddEmployee = () => { if (!newEmpName || !newEmpPwd) return alert('請輸入完整資料'); const currentEmps = storeEmployees[selectedStoreForEmp] || []; if (currentEmps.some(e => e.password === newEmpPwd)) return alert('此密碼已被使用，請更換'); const newEmp = { id: Date.now(), name: newEmpName, password: newEmpPwd }; setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: [...currentEmps, newEmp] }); setNewEmpName(''); setNewEmpPwd(''); alert('員工新增成功！'); };
-    const handleDeleteEmployee = (id) => { if (!window.confirm('確定要刪除此員工帳號嗎？')) return; setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: (storeEmployees[selectedStoreForEmp]||[]).filter(e => e.id !== id) }); };
+    const handleAddEmployee = () => { 
+        if (!newEmpName || !newEmpPwd) return alert('請輸入完整資料'); 
+        const currentEmps = storeEmployees[selectedStoreForEmp] || []; 
+        if (currentEmps.some(e => e.password === newEmpPwd)) return alert('此密碼已被使用，請更換'); 
+        const newEmp = { id: Date.now(), name: newEmpName, password: newEmpPwd }; 
+        setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: [...currentEmps, newEmp] }); 
+        setNewEmpName(''); setNewEmpPwd(''); 
+        alert('員工新增成功！'); 
+    };
+
+    const handleDeleteEmployee = (id) => { 
+        if (!window.confirm('確定要刪除此員工帳號嗎？')) return; 
+        setStoreEmployees({ ...storeEmployees, [selectedStoreForEmp]: (storeEmployees[selectedStoreForEmp]||[]).filter(e => e.id !== id) }); 
+    };
+
     const startEditStore = (store) => { setEditingStoreId(store.id); setTempStoreData({ ...store }); };
-    const saveStoreChange = () => { setStoresConfig(prev => ({ ...prev, [editingStoreId]: tempStoreData })); setEditingStoreId(null); alert('分店資料已更新！'); };
+    
+    const saveStoreChange = () => { 
+        setStoresConfig(prev => ({ ...prev, [editingStoreId]: tempStoreData })); 
+        setEditingStoreId(null); 
+        alert('分店資料已更新！'); 
+    };
 
     return (
         <div className="flex h-screen bg-gray-100 font-sans">
             <div className="w-64 bg-gray-900 text-white flex flex-col shadow-xl z-20">
-                <div className="p-6 border-b border-gray-800"><div className="flex items-center gap-3 mb-1"><div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xl">HQ</div><h1 className="text-xl font-bold">野饌總部</h1></div><div className="text-xs text-gray-500">中央管理系統 v2.8</div></div>
+                <div className="p-6 border-b border-gray-800">
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center font-bold text-xl">HQ</div>
+                        <h1 className="text-xl font-bold">野饌總部</h1>
+                    </div>
+                    <div className="text-xs text-gray-500">中央管理系統 v2.8</div>
+                </div>
                 <nav className="flex-grow p-4 space-y-2 overflow-y-auto">
                     <button onClick={() => setActiveTab('report')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'report' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><PieChart size={20}/> 營運總表</button>
                     <button onClick={() => setActiveTab('daily_reports')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'daily_reports' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><FileText size={20}/> 日報檢視</button>
@@ -3022,19 +3276,110 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
                     <button onClick={() => setActiveTab('menu')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'menu' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><Utensils size={20}/> 菜單設定</button>
                     <button onClick={() => setActiveTab('bookings')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'bookings' ? 'bg-teal-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><ClipboardList size={20}/> 訂位總管</button>
                     <button onClick={() => setActiveTab('crm')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'crm' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><Users size={20}/> 會員 CRM</button>
-                    <button onClick={() => setActiveTab('feedback')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'feedback' ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
-                        <MessageCircle size={20}/> 顧客意見
-                    </button>
+                    <button onClick={() => setActiveTab('feedback')} className={`w-full text-left p-3 rounded-xl font-bold flex items-center gap-3 transition-all ${activeTab === 'feedback' ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}><MessageCircle size={20}/> 顧客意見</button>
                 </nav>
-                <div className="p-4 border-t border-gray-800"><button onClick={onLogout} className="w-full bg-gray-800 text-gray-300 py-3 rounded-xl font-bold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"><LogOut size={18}/> 登出系統</button></div>
+                <div className="p-4 border-t border-gray-800">
+                    <button onClick={onLogout} className="w-full bg-gray-800 text-gray-300 py-3 rounded-xl font-bold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"><LogOut size={18}/> 登出系統</button>
+                </div>
             </div>
+            
             <div className="flex-grow overflow-hidden relative">
                 {activeTab === 'report' && <HQReportDashboard salesLogs={salesLogs||[]} setSalesLogs={setSalesLogs} storesConfig={storesConfig} tipLogs={tipLogs||[]} />}
-                {activeTab === 'daily_reports' && <HQDailyReportView storesConfig={storesConfig} />}
-                {activeTab === 'stores' && <div className="p-8 h-full overflow-y-auto"><div className="flex justify-between items-center mb-6"><h2 className="text-3xl font-bold text-gray-800">🏪 分店設定與管理</h2></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(store => (<div key={store.id} className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all ${editingStoreId === store.id ? 'border-purple-500 ring-2 ring-purple-100' : 'border-transparent'}`}><div className="flex justify-between items-start mb-4"><div className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded text-sm">店號: {store.id}</div>{editingStoreId === store.id ? (<div className="flex gap-2"><button onClick={saveStoreChange} className="text-green-600 bg-green-100 p-2 rounded"><Save size={18}/></button><button onClick={()=>setEditingStoreId(null)} className="text-gray-400 bg-gray-100 p-2 rounded"><X size={18}/></button></div>) : (<button onClick={()=>startEditStore(store)} className="text-gray-400 hover:text-blue-600"><Edit3 size={18}/></button>)}</div><div className="space-y-4"><div><label className="text-xs font-bold text-gray-400">分店名稱</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-bold text-lg outline-none" value={tempStoreData.name} onChange={e=>setTempStoreData({...tempStoreData, name: e.target.value})} /> : <div className="font-bold text-xl">{store.name}</div>}</div><div><label className="text-xs font-bold text-gray-400">密碼</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-mono text-lg outline-none" value={tempStoreData.password} onChange={e=>setTempStoreData({...tempStoreData, password: e.target.value})} /> : <div className="font-mono text-lg text-gray-600">{store.password}</div>}</div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-gray-400">前綴</label>{editingStoreId === store.id ? <input className="w-full border-b outline-none" value={tempStoreData.tablePrefix} onChange={e=>setTempStoreData({...tempStoreData, tablePrefix: e.target.value})} /> : <div className="font-bold">{store.tablePrefix}</div>}</div><div><label className="text-xs font-bold text-gray-400">桌數</label>{editingStoreId === store.id ? <input type="number" className="w-full border-b outline-none" value={tempStoreData.tableCount} onChange={e=>setTempStoreData({...tempStoreData, tableCount: parseInt(e.target.value)})} /> : <div className="font-bold">{store.tableCount} 桌</div>}</div></div></div></div>))}</div></div>}
-                {activeTab === 'employees' && <div className="p-8 h-full overflow-y-auto"><h2 className="text-3xl font-bold mb-6 text-gray-800">👷 員工帳號管理</h2><div className="flex gap-8 items-start"><div className="w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100 sticky top-0"><div className="flex items-center gap-2 mb-6 text-indigo-600"><UserPlus size={24}/><h3 className="font-bold text-xl">新增員工</h3></div><div className="space-y-5"><div><label className="block text-sm font-bold text-gray-500 mb-2">歸屬分店</label><select className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500" value={selectedStoreForEmp} onChange={e=>setSelectedStoreForEmp(e.target.value)}>{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div><div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div><button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button></div></div><div className="w-2/3"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-600">{storesConfig[selectedStoreForEmp]?.name} - 員工名單</h3><span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">共 {(storeEmployees[selectedStoreForEmp]||[]).length} 人</span></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{(storeEmployees[selectedStoreForEmp]||[]).length === 0 && <div className="col-span-2 py-10 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">尚未建立員工資料</div>}{(storeEmployees[selectedStoreForEmp]||[]).map(emp=>(<div key={emp.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 border-indigo-500 group hover:shadow-md transition-shadow"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-bold">{emp.name.charAt(0)}</div><div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-400">密碼: {emp.password}</div></div></div><div className="flex gap-2"><button onClick={()=>setQrModalEmp(emp)} className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="顯示打賞 QR Code"><QrCode size={20}/></button><button onClick={()=>handleDeleteEmployee(emp.id)} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={20}/></button></div></div>))}</div></div></div></div>}
                 
-                {/* ★★★ 5. 菜單設定 (這裡需要傳遞正確的參數) ★★★ */}
+                {activeTab === 'daily_reports' && <HQDailyReportView storesConfig={storesConfig} />}
+                
+                {activeTab === 'stores' && (
+                    <div className="p-8 h-full overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-3xl font-bold text-gray-800">🏪 分店設定與管理</h2></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(store => (
+                                <div key={store.id} className={`bg-white p-6 rounded-2xl shadow-sm border-2 transition-all ${editingStoreId === store.id ? 'border-purple-500 ring-2 ring-purple-100' : 'border-transparent'}`}>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded text-sm">店號: {store.id}</div>
+                                        {editingStoreId === store.id ? (
+                                            <div className="flex gap-2">
+                                                <button onClick={saveStoreChange} className="text-green-600 bg-green-100 p-2 rounded"><Save size={18}/></button>
+                                                <button onClick={()=>setEditingStoreId(null)} className="text-gray-400 bg-gray-100 p-2 rounded"><X size={18}/></button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={()=>startEditStore(store)} className="text-gray-400 hover:text-blue-600"><Edit3 size={18}/></button>
+                                        )}
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div><label className="text-xs font-bold text-gray-400">分店名稱</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-bold text-lg outline-none" value={tempStoreData.name} onChange={e=>setTempStoreData({...tempStoreData, name: e.target.value})} /> : <div className="font-bold text-xl">{store.name}</div>}</div>
+                                        <div><label className="text-xs font-bold text-gray-400">密碼</label>{editingStoreId === store.id ? <input className="w-full border-b-2 font-mono text-lg outline-none" value={tempStoreData.password} onChange={e=>setTempStoreData({...tempStoreData, password: e.target.value})} /> : <div className="font-mono text-lg text-gray-600">{store.password}</div>}</div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="text-xs font-bold text-gray-400">前綴</label>{editingStoreId === store.id ? <input className="w-full border-b outline-none" value={tempStoreData.tablePrefix} onChange={e=>setTempStoreData({...tempStoreData, tablePrefix: e.target.value})} /> : <div className="font-bold">{store.tablePrefix}</div>}</div>
+                                            <div><label className="text-xs font-bold text-gray-400">桌數</label>{editingStoreId === store.id ? <input type="number" className="w-full border-b outline-none" value={tempStoreData.tableCount} onChange={e=>setTempStoreData({...tempStoreData, tableCount: parseInt(e.target.value)})} /> : <div className="font-bold">{store.tableCount} 桌</div>}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                {activeTab === 'employees' && (
+                    <div className="p-8 h-full overflow-y-auto">
+                        <h2 className="text-3xl font-bold mb-6 text-gray-800">👷 員工帳號管理</h2>
+                        <div className="flex gap-8 items-start">
+                            <div className="w-1/3 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100 sticky top-0">
+                                <div className="flex items-center gap-2 mb-6 text-indigo-600"><UserPlus size={24}/><h3 className="font-bold text-xl">新增員工</h3></div>
+                                <div className="space-y-5">
+                                    <div><label className="block text-sm font-bold text-gray-500 mb-2">歸屬分店</label><select className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-gray-700 outline-none focus:border-indigo-500" value={selectedStoreForEmp} onChange={e=>setSelectedStoreForEmp(e.target.value)}>{Object.values(storesConfig||{}).filter(s=>s.type!=='HQ').map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                                    <div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div>
+                                    <div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div>
+                                    <button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button>
+                                </div>
+                            </div>
+                            <div className="w-2/3 flex flex-col gap-6">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-600">{storesConfig[selectedStoreForEmp]?.name} - 員工名單</h3><span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-sm font-bold">共 {(storeEmployees[selectedStoreForEmp]||[]).length} 人</span></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {(storeEmployees[selectedStoreForEmp]||[]).length === 0 && <div className="col-span-2 py-10 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">尚未建立員工資料</div>}
+                                        {(storeEmployees[selectedStoreForEmp]||[]).map(emp=>(<div key={emp.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border-l-4 border-indigo-500 group hover:shadow-md transition-shadow"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center font-bold">{emp.name.charAt(0)}</div><div><div className="font-bold text-gray-800">{emp.name}</div><div className="text-xs text-gray-400">密碼: {emp.password}</div></div></div><div className="flex gap-2"><button onClick={()=>setQrModalEmp(emp)} className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="顯示打賞 QR Code"><QrCode size={20}/></button><button onClick={()=>handleDeleteEmployee(emp.id)} className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={20}/></button></div></div>))}
+                                    </div>
+                                </div>
+
+                                {/* ★ 新增：打卡工時對帳明細 (24H 聚合版) ★ */}
+                                <div className="bg-white rounded-3xl shadow-xl border overflow-hidden">
+                                    <div className="bg-gray-800 p-4 text-white flex justify-between items-center">
+                                        <h3 className="font-bold flex items-center gap-2"><Clock size={20}/> 打卡工時明細</h3>
+                                        <span className="text-xs opacity-60">點擊標題排序</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-100 font-bold border-b">
+                                                <tr>
+                                                    <th className="p-3">分店</th>
+                                                    <th className="p-3 cursor-pointer hover:text-blue-600" onClick={() => requestSort('date')}>日期 ⇅</th>
+                                                    <th className="p-3 cursor-pointer hover:text-blue-600" onClick={() => requestSort('empName')}>姓名 ⇅</th>
+                                                    <th className="p-3 bg-blue-50">時段一 上/下</th>
+                                                    <th className="p-3 bg-orange-50">時段二 上/下</th>
+                                                    <th className="p-3 text-center bg-green-50">時長(hr)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getSortedClockData().map(row => (
+                                                    <tr key={row.id} className="border-b hover:bg-gray-50">
+                                                        <td className="p-3 text-gray-500">{row.storeName}</td>
+                                                        <td className="p-3 font-mono">{row.date}</td>
+                                                        <td className="p-3 font-bold">{row.empName}</td>
+                                                        <td className="p-3 text-blue-700 font-medium">{format24h(row.am_in)} ~ {format24h(row.am_out)}</td>
+                                                        <td className="p-3 text-orange-700 font-medium">{format24h(row.pm_in)} ~ {format24h(row.pm_out)}</td>
+                                                        <td className="p-3 text-center font-black text-green-700">{row.totalHours}</td>
+                                                    </tr>
+                                                ))}
+                                                {getSortedClockData().length === 0 && <tr><td colSpan="6" className="p-10 text-center text-gray-400">尚無打卡數據</td></tr>}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {activeTab === 'menu' && <HQAdvancedMenuManager 
                     menuItems={menuItems} setMenuItems={setMenuItems} 
                     categories={categories} setCategories={setCategories} 
@@ -3047,7 +3392,19 @@ const HQDashboard = ({ diningPlans, setDiningPlans, menuItems, setMenuItems, mem
                 {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} setMembers={setMembers} onUpdateMember={()=>{}} coupons={coupons} setCoupons={setCoupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} />}
                 {activeTab === 'feedback' && <HQFeedbackPage feedbackLogs={feedbackLogs} storesConfig={storesConfig} />}
             </div>
-            {qrModalEmp && (<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setQrModalEmp(null)}><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-bounce-in" onClick={e=>e.stopPropagation()}><div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-bold text-orange-600">{qrModalEmp.name.charAt(0)}</div><h3 className="text-2xl font-bold text-gray-800">{qrModalEmp.name}</h3><p className="text-gray-500 mb-6">專屬打賞 QR Code</p><div className="bg-white p-2 rounded-xl border-4 border-orange-500 inline-block mb-4 shadow-inner"><canvas id="emp-qr-canvas" className="w-64 h-64"></canvas></div><p className="text-xs text-gray-400 mb-6 px-4">請顧客使用手機掃描上方條碼<br/>即可進入打賞頁面</p><button onClick={()=>setQrModalEmp(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-bold w-full">關閉視窗</button></div></div>)}
+
+            {qrModalEmp && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setQrModalEmp(null)}>
+                    <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-bounce-in" onClick={e=>e.stopPropagation()}>
+                        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-bold text-orange-600">{qrModalEmp.name.charAt(0)}</div>
+                        <h3 className="text-2xl font-bold text-gray-800">{qrModalEmp.name}</h3>
+                        <p className="text-gray-500 mb-6">專屬打賞 QR Code</p>
+                        <div className="bg-white p-2 rounded-xl border-4 border-orange-500 inline-block mb-4 shadow-inner"><canvas id="emp-qr-canvas" className="w-64 h-64"></canvas></div>
+                        <p className="text-xs text-gray-400 mb-6 px-4">請顧客使用手機掃描上方條碼<br/>即可進入打賞頁面</p>
+                        <button onClick={()=>setQrModalEmp(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-8 rounded-xl font-bold w-full">關閉視窗</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -3204,7 +3561,7 @@ const TipWrapper = ({ storeId, employeeId, storesConfig, onAddTip }) => {
 // =======================================================
 const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
     // 1. 讀取分店桌況 (給點餐用)
-    const [tables] = useFirebaseState('pos_data', `tables_${storeId}`, []);
+    const [tables, setTables] = useFirebaseState('pos_data', `tables_${storeId}`, []);
     const [diningPlans] = useFirebaseState('pos_data', 'plans', INITIAL_DINING_PLANS);
     const [menuItems] = useFirebaseState('pos_data', 'menu', INITIAL_MENU_ITEMS);
     const [categories] = useFirebaseState('pos_data', 'categories', INITIAL_CATEGORIES);
@@ -3256,7 +3613,7 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
             diningPlans={diningPlans} 
             menuItems={menuItems} 
             categories={categories} 
-            setTables={()=>{}} 
+            setTables={setTables} 
             tables={tables} 
             printers={[]} 
             stockStatus={stockStatus} 
