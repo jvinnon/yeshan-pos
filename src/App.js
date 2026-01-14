@@ -407,7 +407,7 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
     if (!currentTable || currentTable.status !== 'occupied') return <div className="h-screen flex items-center justify-center bg-gray-900 text-white p-8 text-center"><div><h1 className="text-3xl font-bold mb-4">⚠️ 連結失效</h1><p>此座位尚未開桌，請聯繫服務人員。</p></div></div>; 
     if (currentTable.token && currentTable.token !== urlToken) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white p-8 text-center"><div><h1 className="text-3xl font-bold mb-4 text-red-500">🚫 連結已過期</h1><p>這是舊的點餐連結，無法使用。</p><p className="mt-4 text-gray-400">這桌已重新開桌，請掃描桌上<br/>最新的 QR Code。</p></div></div>;
     const now = Date.now();
-    const timeLimit = 150 * 60 * 1000; 
+    const timeLimit = 90 * 60 * 1000; 
     if (now - currentTable.startTime > timeLimit) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white p-8 text-center"><div><h1 className="text-3xl font-bold mb-4 text-orange-500">⏳ 連結已過期</h1><p>此 QR Code 已超過有效期限。</p><p className="mt-2">如需加點，請聯繫服務人員。</p></div></div>; 
     
     const safeDiningPlans = diningPlans || INITIAL_DINING_PLANS;
