@@ -212,7 +212,7 @@ const TipPage = ({ storeId, empId, storeEmployees, tipLogs, setTipLogs, tables, 
 };
 
 // --- 顧客端會員中心 ---
-const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack }) => {
+const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack, storeId }) => {
     const [phone, setPhone] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
@@ -240,6 +240,7 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
 
     const handleRegisterConfirm = () => {
         if (!regName.trim()) return alert('拜託請輸入您的尊姓大名 🙏');
+        const now = new Date();
         const newMember = {
             phone: phone,
             name: regName, 
@@ -251,6 +252,8 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
             isLineBound: false,
             birthdayRedeemed: false,
             joinDate: new Date().toISOString().split('T')[0],
+            joinTime: now.toISOString(),               // 新增：詳細時間 (給老闆看用)
+            joinStore: storeId || '未知',              // 新增：註冊分店 ID
             items: [],
             pointLogs: []
         };
@@ -934,7 +937,7 @@ const DailyReportPage = ({ currentStore }) => {
 // ★★★ 修正版 MemberPage：修復總部新增會員與優惠券功能 ★★★
 // =======================================================
 // 注意：這裡新增了 setMembers, setCoupons 到 props 接收
-const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, coupons, setCoupons, addLog, currentStoreName, isHQ }) => {
+const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, coupons, setCoupons, addLog, currentStoreName, isHQ, storesConfig }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('list');
     const [selectedMember, setSelectedMember] = useState(null);
@@ -1076,8 +1079,8 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
                         )}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50 text-gray-500 font-bold border-b"><tr><th className="p-4">姓名</th><th className="p-4">手機</th><th className="p-4">等級</th><th className="p-4">點數</th><th className="p-4">累積消費</th><th className="p-4 text-right">操作</th></tr></thead>
-                                <tbody>{filteredMembers.length === 0 ? <tr><td colSpan="7" className="p-8 text-center text-gray-400">查無會員資料</td></tr> : filteredMembers.map(m => (<tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{m.name}</td><td className="p-4 font-mono">{m.phone}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td><td className="p-4 text-orange-600 font-bold">{m.points}</td><td className="p-4">${m.totalSpending?.toLocaleString()}</td><td className="p-4 text-right"><button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button></td></tr>))}</tbody>
+                                <thead className="bg-gray-50 text-gray-500 font-bold border-b"><tr><th className="p-4">姓名</th><th className="p-4">手機</th><th className="p-4">註冊分店</th><th className="p-4">註冊時間</th><th className="p-4">等級</th><th className="p-4">點數</th><th className="p-4">累積消費</th><th className="p-4 text-right">操作</th></tr></thead>
+                                <tbody>{filteredMembers.length === 0 ? <tr><td colSpan="7" className="p-8 text-center text-gray-400">查無會員資料</td></tr> : filteredMembers.map(m => (<tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{m.name}</td><td className="p-4 font-mono">{m.phone}</td><td className="p-4 text-gray-600">{storesConfig && m.joinStore ? (storesConfig[m.joinStore]?.name || m.joinStore) : '-'}</td><td className="p-4 text-sm text-gray-500">{m.joinTime ? new Date(m.joinTime).toLocaleString() : (m.joinDate || '-')}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td><td className="p-4 text-orange-600 font-bold">{m.points}</td><td className="p-4">${m.totalSpending?.toLocaleString()}</td><td className="p-4 text-right"><button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button></td></tr>))}</tbody>
                             </table>
                         </div>
                     </div>
@@ -2752,6 +2755,32 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
 
     const handleDelete = (id) => { if(window.confirm('確定刪除？')) setSalesLogs(prev => prev.filter(log => log.id !== id)); };
     const handleEdit = (log) => { const newAmount = prompt(`修改金額`, log.amount); if (newAmount !== null && !isNaN(newAmount)) setSalesLogs(prev => prev.map(item => item.id === log.id ? { ...item, amount: parseInt(newAmount) } : item)); };
+    // ★★★ 新增：修改交易日期 (補結帳救星) ★★★
+    const handleDateEdit = (log) => {
+        const current = new Date(log.timestamp);
+        // 取得目前的日期字串 (YYYY-MM-DD) 當作預設值
+        const dateStr = current.toLocaleDateString('en-CA');
+        
+        const newDateInput = prompt(`請修改此筆交易的「歸帳日期」\n(格式: YYYY-MM-DD)\n\n原本時間: ${current.toLocaleString()}`, dateStr);
+
+        if (newDateInput) {
+            // 簡單檢查格式對不對
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(newDateInput)) {
+                return alert("❌ 格式錯誤！請依照 YYYY-MM-DD 格式輸入 (例如 2026-01-14)");
+            }
+
+            // 保留原本的「時:分:秒」，只換掉「年-月-日」
+            const newTime = new Date(newDateInput);
+            newTime.setHours(current.getHours());
+            newTime.setMinutes(current.getMinutes());
+            newTime.setSeconds(current.getSeconds());
+
+            setSalesLogs(prev => prev.map(item => 
+                item.id === log.id ? { ...item, timestamp: newTime.getTime() } : item
+            ));
+            alert(`✅ 修改成功！\n此筆交易已移動至 ${newDateInput}。`);
+        }
+    };
 
     return (
         <div className="p-6 h-full overflow-y-auto bg-gray-50 font-sans">
@@ -2765,7 +2794,7 @@ const HQReportDashboard = ({ salesLogs, setSalesLogs, storesConfig, tipLogs }) =
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
                     <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700 flex items-center gap-2"><ClipboardList size={18}/> 交易明細</h3></div>
-                    <div className="flex-grow overflow-y-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-100 text-gray-500 sticky top-0 z-10 font-bold"><tr><th className="p-3">時間</th><th className="p-3">分店</th><th className="p-3">桌號</th><th className="p-3">支付</th><th className="p-3 text-right">金額</th><th className="p-3 text-center">管理</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredSales.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">無符合條件的交易</td></tr> : filteredSales.sort((a,b)=>b.timestamp-a.timestamp).map(log => (<tr key={log.id} className="hover:bg-blue-50 transition-colors"><td className="p-3 font-mono text-gray-600">{new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td><td className="p-3 text-gray-800">{storesConfig[log.storeId]?.name}</td><td className="p-3 font-bold text-blue-600">{log.tableId || '櫃台'}</td><td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{log.paymentMethod}</span></td><td className="p-3 text-right font-bold">${log.amount.toLocaleString()}</td><td className="p-3 flex justify-center gap-2"><button onClick={()=>setViewOrderModal(log)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><Utensils size={16}/></button><button onClick={()=>handleEdit(log)} className="p-1.5 text-orange-500 hover:bg-orange-100 rounded"><Edit3 size={16}/></button><button onClick={()=>handleDelete(log.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
+                    <div className="flex-grow overflow-y-auto"><table className="w-full text-left text-sm"><thead className="bg-gray-100 text-gray-500 sticky top-0 z-10 font-bold"><tr><th className="p-3">時間</th><th className="p-3">分店</th><th className="p-3">桌號</th><th className="p-3">支付</th><th className="p-3 text-right">金額</th><th className="p-3 text-center">管理</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredSales.length === 0 ? <tr><td colSpan="6" className="p-8 text-center text-gray-400">無符合條件的交易</td></tr> : filteredSales.sort((a,b)=>b.timestamp-a.timestamp).map(log => (<tr key={log.id} className="hover:bg-blue-50 transition-colors"><td className="p-3 font-mono text-gray-600">{new Date(log.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td><td className="p-3 text-gray-800">{storesConfig[log.storeId]?.name}</td><td className="p-3 font-bold text-blue-600">{log.tableId || '櫃台'}</td><td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{log.paymentMethod}</span></td><td className="p-3 text-right font-bold">${log.amount.toLocaleString()}</td><td className="p-3 flex justify-center gap-2"><button onClick={()=>setViewOrderModal(log)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded"><Utensils size={16}/></button><button onClick={()=>handleDateEdit(log)} className="p-1.5 text-green-600 hover:bg-green-100 rounded" title="修改日期 (歸戶)"><Clock size={16}/></button><button onClick={()=>handleEdit(log)} className="p-1.5 text-orange-500 hover:bg-orange-100 rounded"><Edit3 size={16}/></button><button onClick={()=>handleDelete(log.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
                 </div>
                 <div className="space-y-6">
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-[240px] flex flex-col"><div className="p-4 border-b bg-gray-50"><h3 className="font-bold text-gray-700 flex items-center gap-2"><Trophy size={18} className="text-yellow-500"/> 本期熱銷排行</h3></div><div className="p-4 overflow-y-auto space-y-3">{bestSellers.length===0?<div className="text-center text-gray-400 text-sm mt-10">尚無數據</div>:bestSellers.map((item,i)=>(<div key={i} className="flex justify-between items-center text-sm"><div className="flex items-center gap-2"><div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${i===0?'bg-yellow-400':i===1?'bg-gray-400':i===2?'bg-orange-400':'bg-blue-200'}`}>{i+1}</div><span className="text-gray-700 font-bold">{item.name}</span></div><span className="text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{item.count} 份</span></div>))}</div></div>
@@ -3173,14 +3202,26 @@ const HQDashboard = ({
     // --- 新增：打卡排序與格式化邏輯 (不影響原有排版) ---
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
+    // ★★★ 修改版：支援跨日歸戶 (05:00前算昨天) ★★★
     const processClockLogs = () => {
         const dailyGroups = {};
         (clockLogs || []).forEach(log => {
-            const dateStr = new Date(log.timestamp).toLocaleDateString('en-CA');
+            // 1. 先把時間抓出來
+            const logTime = new Date(log.timestamp);
+            
+            // 2. 如果是凌晨 0點 ~ 5點，強制把日期減 1 天 (算昨天的班)
+            if (logTime.getHours() < 5) {
+                logTime.setDate(logTime.getDate() - 1);
+            }
+
+            // 3. 轉成文字 (YYYY-MM-DD)
+            const dateStr = logTime.toLocaleDateString('en-CA');
+            
             const key = `${dateStr}_${log.empId}`; 
             if (!dailyGroups[key]) {
                 dailyGroups[key] = { date: dateStr, empName: log.empName, storeName: log.storeName, logs: [] };
             }
+            // 注意：這裡存入原始 log.timestamp 以保持顯示正確時間
             dailyGroups[key].logs.push({ type: log.type, time: new Date(log.timestamp) });
         });
 
@@ -3208,9 +3249,23 @@ const HQDashboard = ({
         });
     };
 
-    const format24h = (date) => {
-        if (!date) return '--:--';
-        return date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
+    // ★★★ 修改版：顯示 (跨隔日) ★★★
+    const format24h = (dateObj, baseDateStr) => {
+        if (!dateObj) return '--:--';
+        
+        const timeStr = dateObj.getHours().toString().padStart(2, '0') + ":" + dateObj.getMinutes().toString().padStart(2, '0');
+
+        // 如果有傳入「這行的日期」，就檢查一下
+        if (baseDateStr) {
+            // 取得打卡當下的日期文字
+            const logDateStr = dateObj.toLocaleDateString('en-CA');
+            
+            // 如果 打卡日期 (如12號) 不等於 表格日期 (如11號) -> 就是跨日了
+            if (logDateStr !== baseDateStr) {
+                return `${timeStr} (跨隔日)`; 
+            }
+        }
+        return timeStr;
     };
 
     const getSortedClockData = () => {
@@ -3365,9 +3420,13 @@ const HQDashboard = ({
                                                         <td className="p-3 text-gray-500">{row.storeName}</td>
                                                         <td className="p-3 font-mono">{row.date}</td>
                                                         <td className="p-3 font-bold">{row.empName}</td>
-                                                        <td className="p-3 text-blue-700 font-medium">{format24h(row.am_in)} ~ {format24h(row.am_out)}</td>
-                                                        <td className="p-3 text-orange-700 font-medium">{format24h(row.pm_in)} ~ {format24h(row.pm_out)}</td>
-                                                        <td className="p-3 text-center font-black text-green-700">{row.totalHours}</td>
+<td className="p-3 text-blue-700 font-medium">
+    {format24h(row.am_in, row.date)} ~ {format24h(row.am_out, row.date)}
+</td>
+<td className="p-3 text-orange-700 font-medium">
+    {format24h(row.pm_in, row.date)} ~ {format24h(row.pm_out, row.date)}
+</td>
+<td className="p-3 text-center font-black text-green-700">{row.totalHours}</td>
                                                     </tr>
                                                 ))}
                                                 {getSortedClockData().length === 0 && <tr><td colSpan="6" className="p-10 text-center text-gray-400">尚無打卡數據</td></tr>}
@@ -3389,7 +3448,7 @@ const HQDashboard = ({
                 />}
                 
                 {activeTab === 'bookings' && <HQBookingManager bookings={bookings} storesConfig={storesConfig} />}
-                {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} setMembers={setMembers} onUpdateMember={()=>{}} coupons={coupons} setCoupons={setCoupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} />}
+                {activeTab === 'crm' && <MemberPage memberAppSettings={memberAppSettings} members={members} setMembers={setMembers} onUpdateMember={()=>{}} coupons={coupons} setCoupons={setCoupons} addLog={()=>{}} currentStoreName="總部" isHQ={true} storesConfig={storesConfig} />}
                 {activeTab === 'feedback' && <HQFeedbackPage feedbackLogs={feedbackLogs} storesConfig={storesConfig} />}
             </div>
 
@@ -3601,13 +3660,17 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
                 coupons={coupons}
                 addLog={handleAddMemberLog}
                 onBack={() => setViewMode('menu')}
+                storeId={storeId}
             />
         );
     }
 
+    const menuFingerprint = JSON.stringify(menuItems) + JSON.stringify(stockStatus) + JSON.stringify(hiddenCategories);
+
     // 呼叫原本的 CustomerOrderPage
     return (
         <CustomerOrderPage 
+            key={menuFingerprint}
             tableId={tableId} 
             storeId={storeId} 
             diningPlans={diningPlans} 
