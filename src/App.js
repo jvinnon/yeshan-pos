@@ -2394,8 +2394,25 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
     const [clockLogs, setClockLogs] = useFirebaseState('pos_data', 'clock_logs', []);
     const [coupons, setCoupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
     const [categories, setCategories] = useFirebaseState('pos_data', 'categories', INITIAL_CATEGORIES);
-    const [salesLogs, setSalesLogs] = useFirebaseState('pos_data', 'sales_logs', []); 
-    const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
+    // =======================================================
+    // ★★★ 萬能修復包：營收 + 庫存 + 小費 全部救回 ★★★
+    // =======================================================
+    
+    // --- 1. 營收紀錄 (雙帳本合體) ---
+    const [oldLogs] = useFirebaseState('pos_data', 'sales_logs', []); // 舊的
+    const [logsV2, setLogsV2] = useFirebaseState('pos_data', 'sales_logs_v2', []); // 新的
+
+    // 合體給報表看
+    const salesLogs = [...(oldLogs || []), ...(logsV2 || [])];
+    // 設定存檔工具給結帳用
+    const setSalesLogs = setLogsV2;
+
+
+    // --- 2. 👇 這裡就是補回來的「庫存狀態」 (Stock) ---
+    const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', {});
+
+
+    // --- 3. 👇 這裡就是補回來的「小費紀錄」 (Tips) ---
     const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
 
     // 用來存回報資料的雲端位置
@@ -3688,13 +3705,25 @@ export default function App() {
 
   // 3. 營運數據 (雲端 - 這樣總部才看得到各店資料)
   const [bookings, setBookings] = useFirebaseState('pos_data', 'bookings', []); 
-  const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
   const [clockLogs, setClockLogs] = useFirebaseState('pos_data', 'clock_logs', []);
+  const [tipLogs, setTipLogs] = useFirebaseState('pos_data', 'tip_logs', []);
   const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
   const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
-  const [salesLogs, setSalesLogs] = useFirebaseState('pos_data', 'sales_logs', []);
-  const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
-  const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
+  // =======================================================
+    // ★★★ 萬能修復包：營收 + 庫存 + 小費 全部救回 ★★★
+    // =======================================================
+    
+    // 1. 營收紀錄
+    const [oldLogs] = useFirebaseState('pos_data', 'sales_logs', []);
+    const [logsV2, setLogsV2] = useFirebaseState('pos_data', 'sales_logs_v2', []);
+    const salesLogs = [...(oldLogs || []), ...(logsV2 || [])];
+    const setSalesLogs = setLogsV2;
+
+    // 2. 庫存狀態
+    const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', {});
+    
+    // 4. 顧客回饋 (如果有這一行的話保留它，沒有就算了)
+    const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
 
   const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || 'branch3'}`, INITIAL_PRINTERS);
 
