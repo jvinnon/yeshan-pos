@@ -11,7 +11,7 @@ const INITIAL_STORES_CONFIG = {
   '000': { id: '000', name: '野饌總部 (HQ)', password: '88888', type: 'HQ', tablePrefix: '', tableCount: 0 },
   '001': { id: '001', name: '七賢總店', password: '69922', type: 'Branch', tableRanges: [{ prefix: 'A', count: 20 }, { prefix: 'B', count: 10 }] },
   '002': { id: '002', name: '鳳山旗艦店', password: '79567', type: 'Branch', tableRanges: [{ prefix: 'F', count: 35 }] },
-  '003': { id: '003', name: '楠梓分店', password: '18127', type: 'Branch', tableRanges: [{ prefix: 'N', count: 15 }, { prefix: 'VIP', count: 3 }] }
+  'branch3': { id: 'branch3', name: '楠梓分店', password: '18127', type: 'Branch', tableRanges: [{ prefix: 'N', count: 15 }, { prefix: 'VIP', count: 3 }] }
 };
 
 const STORE_URLS = {
@@ -46,7 +46,7 @@ const INITIAL_MENU_ITEMS = [
   { id: 15, name: '日本A5和牛', category: '肉品', price: 0, allowedPlans: ['1899'] },
 ];
 
-const INITIAL_STOCK_STATUS = { '001': {}, '002': {}, '003': {} };
+const INITIAL_STOCK_STATUS = { '001': {}, '002': {}, 'branch3': {} };
 const INITIAL_MEMBER_APP_SETTINGS = { announcement: '🎉 本月壽星優惠中！', promoColor: 'bg-orange-500', quickLinks: [], lineRichMenu: 'typeA' };
 
 const BRANCH_PRINTER_CONFIGS = {
@@ -69,11 +69,11 @@ const BRANCH_PRINTER_CONFIGS = {
 };
 
 const urlParams = new URLSearchParams(window.location.search);
-const currentStoreIdFromUrl = urlParams.get('store') || '003';
-const INITIAL_PRINTERS = BRANCH_PRINTER_CONFIGS[currentStoreIdFromUrl] || BRANCH_PRINTER_CONFIGS['003'];
+const currentStoreIdFromUrl = urlParams.get('store') || 'branch3';
+const INITIAL_PRINTERS = BRANCH_PRINTER_CONFIGS[currentStoreIdFromUrl] || BRANCH_PRINTER_CONFIGS['branch3'];
 
 const INITIAL_MEMBERS_DB = [ { phone: '0912345678', name: '王大明', level: 'Tin', points: 0, totalSpending: 0, birthday: '12-05', lastVisit: '2023-10-15', isLineBound: true, birthdayRedeemed: false, joinDate: '2023-01-10', items: [], pointLogs: [] } ];
-const INITIAL_STORE_EMPLOYEES = { '001': [{id: 1, name: '店長', password: '000'}], '002': [], '003': [] };
+const INITIAL_STORE_EMPLOYEES = { '001': [{id: 1, name: '店長', password: '000'}], '002': [], 'branch3': [] };
 
 const INITIAL_COUPONS = [ 
     { id: 1, name: '註冊禮', type: 'cash', value: 100, description: '新會員', expiryDate: '2025-12-31', code: 'NEW10', pointCost: 0, limit: true }, 
@@ -205,14 +205,16 @@ const TipPage = ({ storeId, empId, storeEmployees, tipLogs, setTipLogs, tables, 
         const tipItem = { id: `TIP-${Date.now()}`, name: `服務打賞 (${employee.name})`, price: selectedAmount, count: 1, category: 'Tip', time: new Date().toISOString(), batchId: Date.now() };
         const updatedTables = tables.map(t => { if (t.id === finalTableId) { return { ...t, orders: [...(t.orders || []), tipItem], total: (t.total || 0) + selectedAmount }; } return t; });
         setTables(updatedTables);
-        setTimeout(() => { alert(`✅ 成功給予 ${employee.name} 小費 $${selectedAmount}！\n\n金額已合併至桌號 [${finalTableId}] 的帳單。`); const baseUrl = STORE_URLS[storeId] || STORE_URLS['003']; window.location.href = `${baseUrl}?mode=customer&store=${storeId}&table=${finalTableId}`; setLoading(false); }, 800);
+        setTimeout(() => { alert(`✅ 成功給予 ${employee.name} 小費 $${selectedAmount}！\n\n金額已合併至桌號 [${finalTableId}] 的帳單。`); const baseUrl = STORE_URLS[storeId] || STORE_URLS['branch3']; window.location.href = `${baseUrl}?mode=customer&store=${storeId}&table=${finalTableId}`; setLoading(false); }, 800);
     };
 
     return ( <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6"> <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden mt-10"> <div className="bg-blue-600 p-8 text-center text-white relative"> <div className="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><ScanLine size={12}/> 桌號: {finalTableId} <button onClick={()=>setIsManualInput(true)} className="ml-1 underline"><Edit3 size={10}/></button></div> <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-bold text-blue-600 shadow-md">{employee.name[0]}</div> <h2 className="text-2xl font-bold">{employee.name}</h2> <p className="opacity-90 mt-1">感謝您對服務的認可！❤️</p> </div> <div className="p-8"> <label className="block text-gray-600 font-bold mb-4 text-center">請選擇打賞金額</label> <div className="grid grid-cols-3 gap-3 mb-8">{[20, 50, 100].map(amount => (<button key={amount} onClick={() => setSelectedAmount(amount)} className={`py-4 rounded-xl font-bold text-xl border-2 transition-all ${selectedAmount === amount ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-600 hover:border-blue-200'}`}>${amount}</button>))}</div> <button onClick={handleConfirmTip} disabled={!selectedAmount || loading} className={`w-full py-4 rounded-xl font-bold text-lg text-white shadow-lg flex items-center justify-center gap-2 transition-all ${!selectedAmount ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 active:scale-95'}`}>{loading ? '處理中...' : <><DollarSign size={20} /> 確認 (併入帳單)</>}</button> <p className="text-xs text-center text-gray-400 mt-6">點擊確認後，小費將自動加入您的用餐帳單。<br/>您可以在結帳時一併支付。</p> </div> </div> </div> );
 };
 
-// --- 顧客端會員中心 ---
-const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack, storeId }) => {
+// =======================================================
+// ★★★ 修正版 CustomerMemberPortal：實作限領、隔日用與期限邏輯 ★★★
+// =======================================================
+const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack, storeId, isStandalone }) => {
     const [phone, setPhone] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
@@ -240,7 +242,9 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
 
     const handleRegisterConfirm = () => {
         if (!regName.trim()) return alert('拜託請輸入您的尊姓大名 🙏');
+        
         const now = new Date();
+
         const newMember = {
             phone: phone,
             name: regName, 
@@ -248,28 +252,36 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
             points: 0,
             totalSpending: 0,
             birthday: '',
-            lastVisit: new Date().toISOString().split('T')[0],
+            lastVisit: now.toISOString().split('T')[0],
             isLineBound: false,
             birthdayRedeemed: false,
-            joinDate: new Date().toISOString().split('T')[0],
-            joinTime: now.toISOString(),               // 新增：詳細時間 (給老闆看用)
-            joinStore: storeId || '未知',              // 新增：註冊分店 ID
+            joinDate: now.toISOString().split('T')[0],
+            joinTime: now.toISOString(),
+            joinStore: storeId || '未知',
             items: [],
             pointLogs: []
         };
         onUpdateMember(newMember); 
         setCurrentUser(newMember); 
-        setIsLoggedIn(true);       
-        setIsRegistering(false);   
+        setIsLoggedIn(true);        
+        setIsRegistering(false);    
         alert(`註冊成功！歡迎 ${regName} 加入野饌會員！`);
     };
 
     const handleRedeem = (coupon) => { 
         if (currentUser.points < coupon.pointCost) return alert('點數不足！'); 
+        
+        // 1. 檢查限領一次
         if (coupon.limit) {
             const alreadyHas = currentUser.items.some(i => i.name === coupon.name);
             if (alreadyHas) return alert('此優惠券每位會員限領一次，您已領取過！');
         }
+
+        // 2. 檢查是否已過期 (雖然UI會擋，但邏輯要再擋一次)
+        if (coupon.expiryDate && new Date(coupon.expiryDate).getTime() < Date.now()) {
+            return alert('此優惠活動已結束！');
+        }
+
         if (!window.confirm(`確定使用 ${coupon.pointCost} 點兌換「${coupon.name}」嗎？`)) return; 
         
         const updatedUser = JSON.parse(JSON.stringify(currentUser)); 
@@ -283,12 +295,36 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
             }); 
         } 
         updatedUser.points = getValidPoints(updatedUser); 
-        const newItem = { id: Date.now(), name: coupon.name, redeemed: false, code: coupon.code ? (coupon.code + Math.floor(Math.random()*1000)) : Math.random().toString(36).substr(2, 6).toUpperCase() }; 
+        
+        // 3. 處理隔日使用
+        let validFrom = 0; 
+        if (coupon.nextDayUse) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            validFrom = tomorrow.getTime();
+        }
+
+        const newItem = { 
+            id: Date.now(), 
+            name: coupon.name, 
+            redeemed: false, 
+            validFrom: validFrom,
+            // ★★★ 4. 將期限存入票券 ★★★
+            expiryDate: coupon.expiryDate,
+            code: coupon.code ? (coupon.code + Math.floor(Math.random()*1000)) : Math.random().toString(36).substr(2, 6).toUpperCase() 
+        }; 
         updatedUser.items.push(newItem); 
+        
         onUpdateMember(updatedUser); 
         setCurrentUser(updatedUser); 
         addLog({ storeName: '自助', staffName: 'User', memberName: updatedUser.name, memberPhone: updatedUser.phone, action: `自助兌換: ${coupon.name}`, points: -coupon.pointCost }); 
-        alert('兌換成功！已存入您的票夾。'); 
+        
+        if (coupon.nextDayUse) {
+            alert('兌換成功！\n注意：此券需等到「明天」才能開始使用喔！');
+        } else {
+            alert('兌換成功！已存入您的票夾。'); 
+        }
     };
 
     if (!isLoggedIn) {
@@ -304,7 +340,9 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
                         <>
                             <NumberPad value={phone} onChange={setPhone} showDisplay={true} placeholder="請輸入手機號碼" />
                             <button onClick={handleCheckPhone} className="w-full bg-orange-600 py-4 rounded-xl font-bold text-xl mt-6 shadow-lg hover:bg-orange-500">下一步 / 登入</button>
+                            {!isStandalone && (
                             <button onClick={onBack} className="w-full text-gray-500 py-4 mt-2">返回點餐</button>
+                            )}
                         </>
                     ) : (
                         <div className="animate-fade-in-up">
@@ -338,24 +376,68 @@ const CustomerMemberPortal = ({ members, onUpdateMember, coupons, addLog, onBack
                 {activeTab === 'redeem' ? (
                     <div className="space-y-3">
                         <h3 className="font-bold text-gray-600 mb-2">可兌換商品</h3>
-                        {(coupons||[]).filter(c => c.pointCost >= 0).map(coupon => (
-                            <div key={coupon.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                                <div><div className="font-bold text-lg text-gray-800">{coupon.name}</div><div className="text-orange-500 font-bold text-sm">{coupon.pointCost} 點</div></div>
-                                <button onClick={() => handleRedeem(coupon)} className={`px-4 py-2 rounded-lg font-bold ${currentUser.points >= coupon.pointCost ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} disabled={currentUser.points < coupon.pointCost}>兌換</button>
-                            </div>
-                        ))}
+                        {(coupons||[]).filter(c => c.pointCost >= 0).map(coupon => {
+                            // ★★★ 檢查活動是否過期 ★★★
+                            const isExpired = coupon.expiryDate && new Date(coupon.expiryDate).getTime() < Date.now();
+                            const canAfford = currentUser.points >= coupon.pointCost;
+                            const isAvailable = !isExpired && canAfford;
+
+                            return (
+                                <div key={coupon.id} className={`bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center ${isExpired ? 'opacity-60 border-gray-100' : 'border-gray-100'}`}>
+                                    <div>
+                                        <div className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                                            {coupon.name}
+                                            {isExpired && <span className="text-[10px] bg-gray-200 text-gray-600 px-1 rounded">已結束</span>}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="text-orange-500 font-bold text-sm">{coupon.pointCost} 點</div>
+                                            {coupon.limit && <div className="text-red-500 text-xs bg-red-50 px-1 rounded border border-red-100">限領1次</div>}
+                                            {coupon.expiryDate && <div className="text-gray-400 text-xs">{coupon.expiryDate} 止</div>}
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleRedeem(coupon)} className={`px-4 py-2 rounded-lg font-bold ${isAvailable ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} disabled={!isAvailable}>
+                                        {isExpired ? '結束' : '兌換'}
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="space-y-3">
                         <h3 className="font-bold text-gray-600 mb-2">已持有票券</h3>
-                        {currentUser.items.filter(i => !i.redeemed).length === 0 ? <div className="text-center text-gray-400 py-10">票夾是空的</div> : currentUser.items.filter(i => !i.redeemed).map((item, idx) => (
-                            <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500 relative overflow-hidden">
-                                <div className="font-bold text-lg text-gray-800">{item.name}</div>
-                                <div className="text-gray-400 text-xs mt-1">核銷代碼</div>
-                                <div className="text-2xl font-mono font-bold text-gray-700 tracking-widest">{item.code}</div>
-                                <div className="absolute right-[-10px] bottom-[-10px] opacity-10 text-blue-500 transform -rotate-12"><Ticket size={80}/></div>
-                            </div>
-                        ))}
+                        {currentUser.items.filter(i => !i.redeemed).length === 0 ? <div className="text-center text-gray-400 py-10">票夾是空的</div> : currentUser.items.filter(i => !i.redeemed).map((item, idx) => {
+                            const isTimeLocked = item.validFrom && item.validFrom > Date.now();
+                            // ★★★ 檢查票券是否過期 ★★★
+                            const isExpired = item.expiryDate && new Date(item.expiryDate).getTime() < Date.now();
+                            
+                            const isUsable = !isTimeLocked && !isExpired;
+
+                            return (
+                                <div key={idx} className={`bg-white p-4 rounded-xl shadow-sm border-l-4 relative overflow-hidden ${isUsable ? 'border-blue-500' : 'border-gray-400 bg-gray-50'}`}>
+                                    <div className="font-bold text-lg text-gray-800">
+                                        {item.name}
+                                        {isExpired && <span className="text-xs text-red-500 ml-2">(已過期)</span>}
+                                    </div>
+                                    
+                                    {isExpired ? (
+                                        <div className="text-red-500 font-bold mt-2 text-sm">🚫 此券已超過使用期限</div>
+                                    ) : (
+                                        <>
+                                            <div className="text-gray-400 text-xs mt-1">核銷代碼 {item.expiryDate && `(有效至 ${item.expiryDate})`}</div>
+                                            {isTimeLocked ? (
+                                                <div className="text-lg font-bold text-gray-500 bg-gray-200 inline-block px-3 py-1 rounded mt-1 flex items-center gap-1">
+                                                    <Clock size={16}/> 明日方可使用
+                                                </div>
+                                            ) : (
+                                                <div className="text-2xl font-mono font-bold text-gray-700 tracking-widest">{item.code}</div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    <div className="absolute right-[-10px] bottom-[-10px] opacity-10 text-blue-500 transform -rotate-12"><Ticket size={80}/></div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )} 
             </div> 
@@ -463,7 +545,7 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
         const ordersToSave = cart.map(c => ({...c, time: new Date().toISOString(), batchId: timestamp}));
         setTables(prev => prev.map(t => { if (t.id === tableId) { const newOrders = [...(t.orders || []), ...ordersToSave]; return { ...t, orders: newOrders, lastBatchTime: timestamp }; } return t; })); 
         
-        const currentStoreId = storeId || '003';
+        const currentStoreId = storeId || 'branch3';
         const KITCHEN_IP_MAP = {
             '001': '192.168.1.115', // 七賢總店
             '002': '192.168.123.100', // 鳳山店 (請填入鳳山的廚房 IP，例如 192.168.1.200)
@@ -742,15 +824,24 @@ const SettingsPage = ({ printers, setPrinters, onLogout, onResetData, currentSto
 };
 
 // =======================================================
-// ★★★ 新增：分店日報系統 (完全自由輸入版) ★★★
+// ★★★ 防卡死加強版：分店日報系統 ★★★
 // =======================================================
 const DailyReportPage = ({ currentStore }) => {
-    const getTodayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-    const reportId = `report_${currentStore.id}_${getTodayStr()}`; 
+    // 1. 更安全的日期格式化 (避免平板與電腦格式不同)
+    const getSafeTodayStr = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getSafeTodayStr();
+    const reportId = `report_${currentStore.id}_${todayStr}`;
     
     // 使用 Firebase 讀取今日報表
     const [reportData, setReportData] = useFirebaseState('daily_reports', reportId, {
-        date: getTodayStr(),
+        date: todayStr,
         storeId: currentStore.id,
         storeName: currentStore.name,
         status: 'draft', 
@@ -760,13 +851,42 @@ const DailyReportPage = ({ currentStore }) => {
         lastUpdated: Date.now()
     });
 
-    // ★★★★★ 關鍵修正：加上這段安全檢查！ ★★★★★
-    // 如果資料還沒抓下來，先顯示轉圈圈，不然下面計算會當機
+    // ★★★ 2. 強制救援功能：手動建立檔案 ★★★
+    const handleForceCreate = async () => {
+        if(window.confirm('確定要強制建立今日報表嗎？')) {
+            const defaultData = {
+                date: todayStr,
+                storeId: currentStore.id,
+                storeName: currentStore.name,
+                status: 'draft', 
+                incomes: [], 
+                expenses: [],
+                notes: '',
+                lastUpdated: Date.now()
+            };
+            // 強制寫入 Firebase
+            await setDoc(doc(db, 'daily_reports', reportId), { val: defaultData });
+            // 強制更新本地狀態
+            setReportData(defaultData);
+            alert('✅ 已強制建立！畫面應會顯示。');
+        }
+    };
+
+    // 如果資料還沒抓下來，顯示轉圈圈 + 救援按鈕
     if (!reportData) {
         return (
             <div className="h-full flex flex-col items-center justify-center bg-gray-100 text-gray-500">
-                <Loader className="animate-spin mb-4" size={48} />
-                <p className="text-xl font-bold">正在同步雲端日報...</p>
+                <Loader className="animate-spin mb-6 text-blue-500" size={64} />
+                <p className="text-2xl font-bold mb-2">正在同步雲端日報...</p>
+                <p className="text-sm mb-8">讀取 ID: {reportId}</p>
+                
+                {/* 👇 這就是救星按鈕 👇 */}
+                <button 
+                    onClick={handleForceCreate}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2"
+                >
+                    <RefreshCcw size={20}/> 太久沒反應？點此強制建立表格
+                </button>
             </div>
         );
     }
@@ -934,9 +1054,8 @@ const DailyReportPage = ({ currentStore }) => {
 };
 
 // =======================================================
-// ★★★ 修正版 MemberPage：修復總部新增會員與優惠券功能 ★★★
+// ★★★ 修正版 MemberPage：新增「優惠期限」功能 ★★★
 // =======================================================
-// 注意：這裡新增了 setMembers, setCoupons 到 props 接收
 const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, coupons, setCoupons, addLog, currentStoreName, isHQ, storesConfig }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('list');
@@ -944,25 +1063,31 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
     const [adjustPoints, setAdjustPoints] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
     
-    // APP 設定狀態
     const [tempAppSettings, setTempAppSettings] = useState(memberAppSettings);
-    const [newLinkName, setNewLinkName] = useState('');
     
-    // 新增會員用狀態
     const [isAddingMember, setIsAddingMember] = useState(false);
     const [newMemberData, setNewMemberData] = useState({ name: '', phone: '' });
 
-    // 新增優惠券用狀態
     const [isAddingCoupon, setIsAddingCoupon] = useState(false);
-    const [newCouponData, setNewCouponData] = useState({ name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '' });
+    
+    // ★★★ 1. 預設期限設為「今年年底」或「一個月後」，比較方便 ★★★
+    const getDefaultExpiry = () => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() + 1); // 預設一年後
+        return d.toISOString().split('T')[0];
+    };
 
-    // 搜尋邏輯
+    const [newCouponData, setNewCouponData] = useState({ 
+        name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '', 
+        limit: false, nextDayUse: false, 
+        expiryDate: getDefaultExpiry() // 加入期限欄位
+    });
+
     const filteredMembers = (members || []).filter(m => 
         (m.name && m.name.includes(searchTerm)) || 
         (m.phone && m.phone.includes(searchTerm))
     );
 
-    // ★★★ 功能：手動新增會員 ★★★
     const handleAddMember = () => {
         if (!newMemberData.name || !newMemberData.phone) return alert('請輸入姓名與電話');
         if (members.some(m => m.phone === newMemberData.phone)) return alert('此電話號碼已存在！');
@@ -973,30 +1098,39 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
             joinDate: new Date().toISOString().split('T')[0],
             items: [], pointLogs: [], isLineBound: false
         };
-        setMembers(prev => [...prev, newMember]); // 寫入資料庫
+        setMembers(prev => [...prev, newMember]); 
         setIsAddingMember(false);
         setNewMemberData({ name: '', phone: '' });
         alert('✅ 會員新增成功！');
     };
 
-    // ★★★ 功能：手動新增優惠券 ★★★
     const handleAddCoupon = () => {
         if (!newCouponData.name || !newCouponData.code) return alert('請輸入名稱與代碼');
+        if (!newCouponData.expiryDate) return alert('請設定有效期限');
+
         const newCoupon = {
             ...newCouponData,
             id: Date.now(),
             pointCost: parseInt(newCouponData.pointCost),
             value: parseInt(newCouponData.value),
-            limit: false,
-            expiryDate: '2025-12-31' // 預設期限，可再優化
+            // 這裡直接使用設定的日期
+            expiryDate: newCouponData.expiryDate 
         };
-        setCoupons(prev => [...prev, newCoupon]); // 寫入資料庫
+        setCoupons(prev => [...prev, newCoupon]); 
         setIsAddingCoupon(false);
-        setNewCouponData({ name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '' });
+        setNewCouponData({ 
+            name: '', pointCost: 100, type: 'item', value: 0, description: '', code: '', 
+            limit: false, nextDayUse: false, expiryDate: getDefaultExpiry() 
+        });
         alert('✅ 優惠券新增成功！');
     };
 
-    // 點數調整
+    const handleDeleteCoupon = (id) => {
+        if (window.confirm('⚠️ 確定要刪除這張優惠券嗎？\n\n注意：已經領取這張券的客人仍然可以使用，\n但之後其他客人將無法再看到或兌換此券。')) {
+            setCoupons(prev => prev.filter(c => c.id !== id));
+        }
+    };
+
     const handleAdjustPoints = (type) => {
         if (!adjustPoints || isNaN(adjustPoints)) return alert('請輸入有效點數');
         if (!adjustReason) return alert('請輸入調整原因');
@@ -1038,12 +1172,6 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
     };
 
     const handleSaveSettings = () => { alert('✅ APP 設定已更新 (模擬)'); };
-    const handleAddQuickLink = () => {
-        if(!newLinkName) return;
-        const newLinks = [...(tempAppSettings.quickLinks || []), { name: newLinkName, url: 'action' }];
-        setTempAppSettings({ ...tempAppSettings, quickLinks: newLinks });
-        setNewLinkName('');
-    };
 
     return (
         <div className="flex h-full bg-gray-100 overflow-hidden">
@@ -1062,10 +1190,8 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
                     <div className="space-y-6">
                         <div className="bg-white p-4 rounded-xl shadow-sm flex gap-4">
                             <div className="relative flex-grow"><Search className="absolute left-3 top-3 text-gray-400" size={20}/><input className="w-full pl-10 p-3 border rounded-xl outline-none focus:border-orange-500 font-bold text-lg" placeholder="輸入手機號碼或姓名..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-                            {/* ★★★ 新增按鈕邏輯修正 ★★★ */}
                             <button onClick={() => setIsAddingMember(true)} className="bg-gray-800 text-white px-6 rounded-xl font-bold flex items-center gap-2"><UserPlus size={20}/> 新增會員</button>
                         </div>
-                        {/* 新增會員輸入框 (簡易版) */}
                         {isAddingMember && (
                             <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200 animate-fade-in-up">
                                 <h3 className="font-bold text-orange-800 mb-2">✨ 建立新會員資料</h3>
@@ -1080,7 +1206,7 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 text-gray-500 font-bold border-b"><tr><th className="p-4">姓名</th><th className="p-4">手機</th><th className="p-4">註冊分店</th><th className="p-4">註冊時間</th><th className="p-4">等級</th><th className="p-4">點數</th><th className="p-4">累積消費</th><th className="p-4 text-right">操作</th></tr></thead>
-                                <tbody>{filteredMembers.length === 0 ? <tr><td colSpan="7" className="p-8 text-center text-gray-400">查無會員資料</td></tr> : filteredMembers.map(m => (<tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{m.name}</td><td className="p-4 font-mono">{m.phone}</td><td className="p-4 text-gray-600">{storesConfig && m.joinStore ? (storesConfig[m.joinStore]?.name || m.joinStore) : '-'}</td><td className="p-4 text-sm text-gray-500">{m.joinTime ? new Date(m.joinTime).toLocaleString() : (m.joinDate || '-')}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td><td className="p-4 text-orange-600 font-bold">{m.points}</td><td className="p-4">${m.totalSpending?.toLocaleString()}</td><td className="p-4 text-right"><button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button></td></tr>))}</tbody>
+                                <tbody>{filteredMembers.length === 0 ? <tr><td colSpan="8" className="p-8 text-center text-gray-400">查無會員資料</td></tr> : filteredMembers.map(m => (<tr key={m.phone} className="border-b last:border-0 hover:bg-gray-50 transition-colors"><td className="p-4 font-bold">{m.name}</td><td className="p-4 font-mono">{m.phone}</td><td className="p-4 text-gray-600">{storesConfig && m.joinStore ? (storesConfig[m.joinStore]?.name || m.joinStore) : '-'}</td><td className="p-4 text-sm text-gray-500">{m.joinTime ? new Date(m.joinTime).toLocaleString() : (m.joinDate || '-')}</td><td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold text-white bg-gray-400`}>{m.level}</span></td><td className="p-4 text-orange-600 font-bold">{m.points}</td><td className="p-4">${m.totalSpending?.toLocaleString()}</td><td className="p-4 text-right"><button onClick={() => setSelectedMember(m)} className="text-blue-600 font-bold hover:underline">查看詳情</button></td></tr>))}</tbody>
                             </table>
                         </div>
                     </div>
@@ -1098,11 +1224,34 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
                 {activeTab === 'coupons' && isHQ && (
                     <div className="space-y-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {coupons.map(coupon => (<div key={coupon.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group"><div className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">{coupon.pointCost} 點</div><h3 className="font-bold text-xl mb-1">{coupon.name}</h3><p className="text-sm text-gray-500 mb-4">{coupon.description}</p><div className="text-xs text-gray-400"><div>代碼: {coupon.code}</div></div></div>))}
-                            {/* ★★★ 修正按鈕邏輯：開啟新增模式 ★★★ */}
+                            {coupons.map(coupon => {
+                                // 判斷是否過期
+                                const isExpired = new Date(coupon.expiryDate).getTime() < Date.now();
+                                return (
+                                    <div key={coupon.id} className={`bg-white p-6 rounded-xl shadow-sm border relative overflow-hidden group ${isExpired ? 'border-gray-200 opacity-70' : 'border-gray-100'}`}>
+                                        <div className={`absolute top-0 right-0 text-white text-xs px-2 py-1 rounded-bl-lg font-bold ${isExpired ? 'bg-gray-400' : 'bg-orange-500'}`}>{coupon.pointCost} 點</div>
+                                        <h3 className="font-bold text-xl mb-1 flex items-center gap-2">
+                                            {coupon.name}
+                                            {isExpired && <span className="text-xs bg-red-100 text-red-600 px-1 rounded border border-red-200">已過期</span>}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 mb-2">{coupon.description}</p>
+                                        
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {coupon.limit && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200">限領1次</span>}
+                                            {coupon.nextDayUse && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded border border-blue-200">隔日使用</span>}
+                                            {/* ★★★ 顯示期限 ★★★ */}
+                                            <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200 flex items-center gap-1">
+                                                <Clock size={10}/> {coupon.expiryDate} 止
+                                            </span>
+                                        </div>
+
+                                        <div className="text-xs text-gray-400"><div>代碼: {coupon.code}</div></div>
+                                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="absolute bottom-3 right-3 bg-gray-100 p-2 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100" title="刪除"><Trash2 size={18}/></button>
+                                    </div>
+                                );
+                            })}
                             <button onClick={() => setIsAddingCoupon(true)} className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:bg-white hover:border-gray-400 hover:text-gray-600 h-40 transition-all"><Plus size={32} /><span className="font-bold mt-2">新增優惠券</span></button>
                          </div>
-                         {/* 新增優惠券輸入框 */}
                          {isAddingCoupon && (
                              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                                  <div className="bg-white p-8 rounded-2xl w-96 animate-fade-in-up">
@@ -1112,6 +1261,27 @@ const MemberPage = ({ memberAppSettings, members, setMembers, onUpdateMember, co
                                         <input className="w-full border p-2 rounded" placeholder="所需點數" type="number" value={newCouponData.pointCost} onChange={e=>setNewCouponData({...newCouponData, pointCost:e.target.value})}/>
                                         <input className="w-full border p-2 rounded" placeholder="核銷代碼 (英文數字)" value={newCouponData.code} onChange={e=>setNewCouponData({...newCouponData, code:e.target.value})}/>
                                         <input className="w-full border p-2 rounded" placeholder="描述" value={newCouponData.description} onChange={e=>setNewCouponData({...newCouponData, description:e.target.value})}/>
+                                        
+                                        <div className="flex gap-4 items-center border p-2 rounded bg-gray-50">
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700">
+                                                <input type="checkbox" className="w-4 h-4" checked={newCouponData.limit} onChange={e=>setNewCouponData({...newCouponData, limit: e.target.checked})}/> 每人限領一次
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700">
+                                                <input type="checkbox" className="w-4 h-4" checked={newCouponData.nextDayUse} onChange={e=>setNewCouponData({...newCouponData, nextDayUse: e.target.checked})}/> 隔日才能使用
+                                            </label>
+                                        </div>
+
+                                        {/* ★★★ 2. 日期選擇器 ★★★ */}
+                                        <div className="border p-2 rounded bg-gray-50">
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">使用期限</label>
+                                            <input 
+                                                type="date" 
+                                                className="w-full bg-transparent outline-none font-bold text-gray-700"
+                                                value={newCouponData.expiryDate} 
+                                                onChange={e=>setNewCouponData({...newCouponData, expiryDate: e.target.value})}
+                                            />
+                                        </div>
+
                                         <select className="w-full border p-2 rounded" value={newCouponData.type} onChange={e=>setNewCouponData({...newCouponData, type:e.target.value})}><option value="item">兌換商品 (免費)</option><option value="cash">現金折抵</option><option value="percent">折扣 (%)</option></select>
                                         {(newCouponData.type === 'cash' || newCouponData.type === 'percent') && <input className="w-full border p-2 rounded" placeholder="數值 (元/%)" type="number" value={newCouponData.value} onChange={e=>setNewCouponData({...newCouponData, value:e.target.value})}/>}
                                         <div className="flex gap-2 mt-4">
@@ -1407,7 +1577,7 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
         
         // 3. 設定 API 位置 (抓取該分店的 ngrok 網址)
         const SERVER_API = `${STORE_URLS[currentStoreId]}/api/print`;
-        const BASE_URL = STORE_URLS[currentStoreId] || STORE_URLS['003']; // 預設楠梓
+        const BASE_URL = STORE_URLS[currentStoreId] || STORE_URLS['branch3']; // 預設楠梓
         
         // 4. 產生 QR Code 連結
         const orderUrl = `${BASE_URL}?mode=customer&store=${currentStoreId}&table=${selectedTable.id}&token=${sessionToken}`;
@@ -1465,7 +1635,7 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
         const targetConfig = printers.find(p => p.id === 'counter') || printers[0];
         const targetIp = targetConfig ? targetConfig.ip : '192.168.1.176';
         const SERVER_API = `${STORE_URLS[currentStoreId]}/api/print`;
-        const BASE_URL = STORE_URLS[currentStoreId] || STORE_URLS['003'];
+        const BASE_URL = STORE_URLS[currentStoreId] || STORE_URLS['branch3'];
         const currentToken = liveTable.token || ''; 
         const orderUrl = `${BASE_URL}?mode=customer&store=${currentStoreId}&table=${selectedTable.id}&token=${currentToken}`;
         
@@ -2676,7 +2846,7 @@ const HQDailyReportView = ({ storesConfig }) => {
     const [viewDate, setViewDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [report001] = useFirebaseState('daily_reports', `report_001_${viewDate}`, null);
     const [report002] = useFirebaseState('daily_reports', `report_002_${viewDate}`, null);
-    const [report003] = useFirebaseState('daily_reports', `report_003_${viewDate}`, null);
+    const [reportbranch3] = useFirebaseState('daily_reports', `report_branch3_${viewDate}`, null);
 
     return (
         <div className="p-8 h-full overflow-y-auto bg-gray-50">
@@ -2685,12 +2855,12 @@ const HQDailyReportView = ({ storesConfig }) => {
                 <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow border"><span className="font-bold text-gray-500 pl-2">選擇日期：</span><input type="date" value={viewDate} onChange={e=>setViewDate(e.target.value)} className="font-bold outline-none text-lg text-blue-600 bg-transparent"/></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {['001', '002', '003'].map(storeId => {
+                {['001', '002', 'branch3'].map(storeId => {
                     const storeName = storesConfig[storeId]?.name || storeId;
                     let report = null;
                     if(storeId === '001') report = report001;
                     if(storeId === '002') report = report002;
-                    if(storeId === '003') report = report003;
+                    if(storeId === 'branch3') report = reportbranch3;
                     const isSubmitted = report?.status === 'submitted';
                     return (
                         <div key={storeId} className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 flex flex-col h-full">
@@ -3526,7 +3696,7 @@ export default function App() {
   const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', INITIAL_STOCK_STATUS);
   const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
 
-  const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || '003'}`, INITIAL_PRINTERS);
+  const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || 'branch3'}`, INITIAL_PRINTERS);
 
   // Tip Mode Logic
   const queryParams = new URLSearchParams(window.location.search);
@@ -3540,6 +3710,10 @@ export default function App() {
   if (isTipMode && employeeId) {
       return <TipWrapper storeId={urlStoreId} employeeId={employeeId} storesConfig={storesConfig} onAddTip={(tip) => setTipLogs(prev => [tip, ...prev])} />;
   }
+
+  if (mode === 'member' && urlStoreId) {
+        return <MemberCheckWrapper storeId={urlStoreId} />;
+    }
 
   // ★★★ 顧客點餐模式判斷 ★★★
   if (mode === 'customer' && urlStoreId && tableId) {
@@ -3613,6 +3787,45 @@ const TipWrapper = ({ storeId, employeeId, storesConfig, onAddTip }) => {
     const emp = storeEmps.find(e => e.id.toString() === employeeId) || { name: '服務員' };
 
     return <TipPage employee={emp} storeId={storeId} onAddTip={onAddTip} />;
+};
+
+// =======================================================
+// ★★★ 新增：純會員查詢模式 (無需開桌) ★★★
+// =======================================================
+const MemberCheckWrapper = ({ storeId }) => {
+    // 1. 只讀取會員、優惠券、日誌
+    const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
+    const [coupons] = useFirebaseState('pos_data', 'coupons', INITIAL_COUPONS);
+    const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
+
+    // 2. 更新會員資料的邏輯
+    const handleUpdateMember = (updatedMember) => {
+        setMembers(prevMembers => {
+            const exists = prevMembers.some(m => m.phone === updatedMember.phone);
+            if (exists) {
+                return prevMembers.map(m => m.phone === updatedMember.phone ? updatedMember : m);
+            } else {
+                return [...prevMembers, updatedMember];
+            }
+        });
+    };
+
+    // 3. 寫入日誌
+    const handleAddMemberLog = (log) => {
+        setMemberLogs(prev => [{ id: Date.now(), timestamp: Date.now(), ...log }, ...prev]);
+    };
+
+    return (
+        <CustomerMemberPortal
+            members={members}
+            onUpdateMember={handleUpdateMember}
+            coupons={coupons}
+            addLog={handleAddMemberLog}
+            onBack={() => {}} // 這裡給空函式，因為按鈕已經被藏起來了
+            storeId={storeId}
+            isStandalone={true} // ★ 告訴它這是獨立模式
+        />
+    );
 };
 
 // =======================================================
