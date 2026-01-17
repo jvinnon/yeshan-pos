@@ -3909,7 +3909,6 @@ const CustomerWrapper = ({ tableId, storeId, onGoToMember, printerConfig }) => {
 
     const menuFingerprint = JSON.stringify(menuItems) + JSON.stringify(stockStatus) + JSON.stringify(hiddenCategories);
 
-    
     // 呼叫原本的 CustomerOrderPage
     return (
         <CustomerOrderPage 
