@@ -1,7 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, EyeOff, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
-import { db } from './firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+
+// 1. 圖示大合體 (保留您原本的，並補上新的)
+import { 
+  // --- 您原本有的 (千萬不能刪) ---
+  ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, EyeOff, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check, 
+  
+  // --- ★★★ 這次新增的 (補在這裡) ★★★ ---
+  UtensilsCrossed, ImageIcon, LayoutGrid, List, AlertCircle, CheckCircle, Bell, Menu, User, ChevronDown
+} from 'lucide-react';
+
+// 2. Firebase 設定 (保留您原本的 db 連結，但增加新功能需要的工具)
+import { db } from './firebase'; // 維持您原本的設定
+import { 
+  doc, onSnapshot, setDoc, // 您原本有的
+  // --- ★★★ 這次新增的 Firebase 工具 ★★★ ---
+  collection, addDoc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, getFirestore 
+} from 'firebase/firestore';
+
+// 3. 其他工具
 import QRCode from 'qrcode';
 
 // =======================================================
