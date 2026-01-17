@@ -2674,7 +2674,7 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
             categories={categories} setCategories={setCategories}
             hiddenCategories={hiddenCategories} 
             setHiddenCategories={setHiddenCategories} 
-            memberLogs={memberLogs} salesLogs={salesLogs} 
+            memberLogs={memberLogs} 
             stockStatus={stockStatus} setStockStatus={setStockStatus}
             tipLogs={tipLogs} 
             slotPrizes={slotPrizes} setSlotPrizes={setSlotPrizes}
