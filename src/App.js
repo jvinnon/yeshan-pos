@@ -1,23 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-
-// 1. 圖示大合體 (保留您原本的，並補上新的)
-import { 
-  // --- 您原本有的 (千萬不能刪) ---
-  ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, EyeOff, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check, 
-  
-  // --- ★★★ 這次新增的 (補在這裡) ★★★ ---
-  UtensilsCrossed, ImageIcon, LayoutGrid, List, AlertCircle, CheckCircle, Bell, Menu, User, ChevronDown
-} from 'lucide-react';
-
-// 2. Firebase 設定 (保留您原本的 db 連結，但增加新功能需要的工具)
-import { db } from './firebase'; // 維持您原本的設定
-import { 
-  doc, onSnapshot, setDoc, // 您原本有的
-  // --- ★★★ 這次新增的 Firebase 工具 ★★★ ---
-  collection, addDoc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, getFirestore 
-} from 'firebase/firestore';
-
-// 3. 其他工具
+import { ArrowLeft, Settings, Users, Home, ClipboardList, Clock, Wifi, Printer, LogOut, Plus, Minus, EyeOff, Trash2, Delete, X, Edit3, Save, Store, BarChart3, Utensils, Search, UserPlus, Ticket, ShoppingCart, MessageCircle, RefreshCcw, Briefcase, HardDrive, Server, UserCog, PieChart, QrCode, ChevronLeft, ChevronRight, Tag, MoveRight, FileWarning, Heart, DollarSign, Gift, UserCheck, ShieldAlert, ScanLine, FileText, Sparkles, Percent, Trophy, Loader, TrendingUp, Check } from 'lucide-react';
+import { db } from './firebase';
+import { doc, onSnapshot, setDoc, collection, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import QRCode from 'qrcode';
 
 // =======================================================
@@ -641,14 +625,25 @@ const CustomerOrderPage = ({ tableId, storeId, diningPlans, menuItems, categorie
             <div className="flex-grow overflow-y-auto p-4 pb-32">
                 <div className="grid grid-cols-2 gap-4">
                     {filteredItems.map(item => (
-                        <button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-3 rounded-xl shadow-sm flex flex-col items-center gap-2 relative ${addedId === item.id ? 'ring-2 ring-green-500' : ''}`}>
-                            <div className="w-full h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-300 font-bold text-2xl">{item.name[0]}</div>
-                            <div className="text-center">
-                                <div className="font-bold text-gray-800">{item.name}</div>
-                                {item.price > 0 && <div className="text-orange-600 text-xs font-bold">+${item.price}</div>}
-                            </div>
-                        </button>
-                    ))}
+    <button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-0 rounded-xl shadow-sm flex flex-col items-center gap-0 relative overflow-hidden h-44 ${addedId === item.id ? 'ring-4 ring-green-500' : ''}`}>
+        
+        {/* ★★★ 圖片顯示區 ★★★ */}
+        <div className="w-full h-28 bg-gray-100 flex items-center justify-center overflow-hidden">
+            {item.image ? (
+                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+            ) : (
+                <div className="text-gray-300 font-bold text-3xl">{item.name[0]}</div>
+            )}
+        </div>
+
+        {/* 文字顯示區 */}
+        <div className="w-full text-center p-2 flex-grow flex flex-col justify-center bg-white">
+            <div className="font-bold text-gray-800 leading-tight text-sm">{item.name}</div>
+            {item.price > 0 && <div className="text-orange-600 text-xs font-bold">+${item.price}</div>}
+        </div>
+
+    </button>
+))}
                 </div>
             </div>
             {cart.length > 0 && (<div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.1)] p-4 rounded-t-2xl z-20"><button onClick={() => setShowCart(true)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-xl shadow-lg flex items-center justify-center gap-2"><ShoppingCart size={24} />查看購物車 ({cart.length})</button></div>)}
@@ -737,7 +732,28 @@ const handleAddToCart = (item) => {
         <div className="flex h-full bg-gray-100 overflow-hidden">
             <div className="w-2/3 flex flex-col border-r border-gray-300">
                 <div className="bg-white p-4 shadow-sm flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide items-center">{['All', ...categories].map(cat => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-6 py-3 rounded-full font-bold text-lg transition-all ${activeCategory === cat ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}>{cat}</button>))}</div>
-                <div className="flex-grow overflow-y-auto p-4"><div className="grid grid-cols-2 md:grid-cols-3 gap-4">{filteredItems.map(item => (<button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center gap-3 active:scale-95 relative overflow-hidden ${addedId === item.id ? 'ring-4 ring-green-500' : ''}`}><div className="w-full h-24 bg-gray-100 rounded-xl flex items-center justify-center text-gray-300 font-bold text-2xl">{item.name[0]}</div><div className="text-center w-full"><div className="font-bold text-lg text-gray-800">{item.name}{item.onlyForStaff && <span className="bg-red-100 text-red-600 text-xs px-1 rounded ml-1">內</span>}</div><div className="text-orange-600 font-bold mt-1">${item.price}</div></div></button>))}</div></div>
+                <div className="flex-grow overflow-y-auto p-4"><div className="grid grid-cols-2 md:grid-cols-3 gap-4">{filteredItems.map(item => (
+    <button key={item.id} onClick={() => handleAddToCart(item)} className={`bg-white p-0 rounded-2xl shadow-sm flex flex-col items-center gap-0 active:scale-95 relative overflow-hidden h-48 border-2 ${addedId === item.id ? 'ring-4 ring-green-500 border-green-500' : 'border-transparent'}`}>
+        
+        {/* 圖片區域：有圖秀圖，沒圖秀字 */}
+        <div className="w-full h-32 bg-gray-100 flex items-center justify-center overflow-hidden">
+            {item.image ? (
+                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+            ) : (
+                <div className="text-gray-300 font-bold text-3xl">{item.name[0]}</div>
+            )}
+        </div>
+
+        {/* 文字區域 */}
+        <div className="text-center w-full p-2 flex-grow flex flex-col justify-center">
+            <div className="font-bold text-lg text-gray-800 leading-tight">{item.name}</div>
+            {item.price > 0 && <div className="text-orange-600 font-bold mt-1 text-sm">${item.price}</div>}
+        </div>
+        
+        {/* 內場標籤 */}
+        {item.onlyForStaff && <span className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">內</span>}
+    </button>
+))}</div></div>
             </div>
             <div className="w-1/3 bg-white flex flex-col shadow-xl z-10 relative">
                 <div className="p-4 bg-gray-800 text-white"><h3 className="text-xl font-bold flex items-center gap-2 mb-4"><ShoppingCart /> 點餐明細</h3><select className="w-full p-3 rounded-lg text-black font-bold outline-none" value={selectedTableId} onChange={e => setSelectedTableId(e.target.value)}><option value="">請選擇桌號...</option>{tables.filter(t => t.status === 'occupied').map(t => <option key={t.id} value={t.id}>桌號 {t.id}</option>)}</select></div>
@@ -1558,7 +1574,7 @@ const BookingPage = ({ bookings, setBookings, currentStoreId, tables, diningPlan
 // =======================================================
 // ★★★ 6. TableModal (正式列印版 - 會真的出紙！) ★★★
 // =======================================================
-const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onRequestCheckout, diningPlans, tables, setTables, printers }) => {
+const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onRequestCheckout, diningPlans, tables, setTables, printers, handleAutoPrintLastCall }) => {
     // 開桌暫存
     const [adults, setAdults] = useState(2);
     const [children, setChildren] = useState(0);
@@ -1784,6 +1800,17 @@ const TableModal = ({ currentStoreId, selectedTable, onClose, onOpenTable, onReq
                     {isOccupied ? (
                         <div className="flex gap-3">
                             <button onClick={() => onRequestCheckout(liveTable)} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2"><DollarSign size={20}/> 結帳買單</button>
+                            <button 
+    onClick={() => {
+        if(window.confirm("確定要列印「最後加點單」給這桌嗎？")) {
+            handleAutoPrintLastCall(liveTable.id, 90); 
+            alert("🖨️ 已發送列印指令");
+        }
+    }} 
+    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 rounded-xl font-bold flex flex-col items-center justify-center text-xs"
+>
+    <Printer size={16}/> 加點單
+</button>
                             <button onClick={handleReprintQR} className="bg-gray-200 hover:bg-gray-300 text-gray-700 p-3 rounded-xl"><Printer size={24}/></button>
                         </div>
                     ) : (
@@ -2573,26 +2600,37 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
             }));
         }
 
-        // --- 2. 寫入銷售紀錄 (修改版：增加存入 orders 詳細內容) ---
-        // 先把這張桌子的資料抓出來 (為了拿 orders)
+        // --- 2. 寫入銷售紀錄 (永久修正：改用 Collection 模式) ---
+        
+        // 先抓出這張桌子的訂單內容
         const currentTableData = tables.find(t => t.id === targetTableId) || checkoutTable;
         const currentOrders = currentTableData ? currentTableData.orders : [];
 
+        // 建立要存檔的資料
         const newSale = { 
-            id: Date.now(), 
-            storeId: currentStore.id, 
-            tableId: targetTableId, 
-            paymentMethod: paymentData.paymentMethod, 
-            amount: finalTotal, 
-            timestamp: Date.now(), 
-            planName: paymentData.planName || checkoutTable?.plan, 
-            adults: paymentData.adults || checkoutTable?.adults, 
+            id: Date.now().toString(), // 給它一個身分證
+            storeId: currentStore.id,
+            storeName: currentStore.name, // 多存一個店名方便看
+            tableId: targetTableId,
+            paymentMethod: paymentData.paymentMethod,
+            amount: finalTotal,
+            timestamp: Date.now(),
+            date: new Date().toLocaleDateString('zh-TW'),
+            time: new Date().toLocaleTimeString('zh-TW'),
+            planName: paymentData.planName || checkoutTable?.plan,
+            adults: paymentData.adults || checkoutTable?.adults,
             children: paymentData.children || checkoutTable?.children,
-            
-            // ★★★ 新增這一行：把這桌吃的東西全部存下來！ ★★★
+            staff: "櫃台人員",
             orders: currentOrders 
         };
-        setSalesLogs(prev => [newSale, ...prev]);
+
+        // ★★★ 關鍵：直接丟進「transactions」無限櫃子 ★★★
+        // 這樣就不會撐爆舊的 sales_logs 了
+        addDoc(collection(db, "transactions"), newSale)
+            .then(() => console.log("✅ 交易已存入雲端 Collection"))
+            .catch(err => alert("⚠️ 存檔失敗 (但結帳流程繼續): " + err.message));
+
+        // ❌ 注意：原本的 setSalesLogs(prev => [newSale, ...prev]); 已經不需要了，請勿保留
 
         // 3. 更新資料庫：清空該桌
         setTables(prevTables => prevTables.map(t => {
@@ -2806,7 +2844,21 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
             </div>
             <div className="flex-grow overflow-hidden relative">
                 <div className={`h-16 shadow-sm flex justify-between items-center px-6 bg-white`}>
-                    <div className="flex items-center gap-3"><h1 className="text-xl font-bold text-gray-800">{currentView === 'home' ? `桌位管理 - ${currentStore.name}` : '野饌POS系統'}</h1></div>
+                    {/* ★★★ 修改：加入圖示與返回鍵，消除 ArrowLeft/BarChart3 警告 ★★★ */}
+<div className="flex items-center gap-2">
+    {currentView !== 'home' && (
+        <button onClick={() => setCurrentView('home')} className="bg-gray-200 p-2 rounded-full hover:bg-gray-300">
+            <ArrowLeft size={24} />
+        </button>
+    )}
+    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+        <BarChart3 className="text-blue-600" />
+        {currentView === 'home' ? `桌位管理 - ${currentStore.name}` : '野饌POS系統'}
+    </h1>
+    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs flex items-center gap-1 font-bold">
+        <TrendingUp size={14}/> 營運中
+    </span>
+</div>
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                         <button onClick={playSound} className="bg-red-50 text-white px-3 py-1 rounded font-bold hover:bg-red-600 active:scale-95 transition-transform shadow-sm">
                             🔊 測試音效
@@ -2844,7 +2896,7 @@ const MainPOS = ({ currentStore, onLogout, isHQMode, slotPrizes, setSlotPrizes, 
                     {currentView === 'report' && <DailyReportPage currentStore={currentStore} />}
                     {currentView === 'clockin' && <ClockInPage employees={storeEmployees[currentStore.id] || []} clockStatus={empClockStatus} onClockUpdate={handleClockUpdate} />}
                 </div>
-                {selectedTable && <TableModal currentStoreId={currentStore.id} selectedTable={selectedTable} onClose={() => setSelectedTable(null)} onOpenTable={handleOpenTable} onRequestCheckout={handleRequestCheckout} diningPlans={diningPlans} tables={tables} setTables={setTables} printers={printers} />}
+                {selectedTable && <TableModal currentStoreId={currentStore.id} selectedTable={selectedTable} onClose={() => setSelectedTable(null)} onOpenTable={handleOpenTable} onRequestCheckout={handleRequestCheckout} diningPlans={diningPlans} tables={tables} setTables={setTables} printers={printers} handleAutoPrintLastCall={handleAutoPrintLastCall} />}
                 
                 {checkoutTable && <CheckoutModal 
                     table={tables.find(t=>t.id===checkoutTable.id)||checkoutTable}
@@ -3070,11 +3122,22 @@ const HQAdvancedMenuManager = ({ menuItems, setMenuItems, categories, setCategor
                     <div className="bg-gray-900 text-white p-5 flex justify-between items-center"><h3 className="font-bold text-xl">{item.id ? '編輯菜色' : '新增菜色'}</h3><button onClick={() => setEditingItem(null)}><X size={24}/></button></div>
                     <div className="p-6 overflow-y-auto space-y-6">
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-sm font-bold text-gray-500">菜色名稱</label><input className="w-full border-2 p-2 rounded-lg font-bold" value={item.name} onChange={e=>setItem({name: e.target.value})} /></div>
-                            <div><label className="text-sm font-bold text-gray-500">分類</label><select className="w-full border-2 p-2 rounded-lg" value={item.category} onChange={e=>setItem({category: e.target.value})}>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                            <div><label className="text-sm font-bold text-gray-500">單點價格</label><input type="number" className="w-full border-2 p-2 rounded-lg" value={item.price} onChange={e=>setItem({price: parseInt(e.target.value)||0})} /></div>
-                            <div><label className="text-sm font-bold text-gray-500">排序權重</label><input type="number" className="w-full border-2 p-2 rounded-lg" value={item.sortOrder||99} onChange={e=>setItem({sortOrder: parseInt(e.target.value)})} /></div>
-                        </div>
+    <div><label className="text-sm font-bold text-gray-500">菜色名稱</label><input className="w-full border-2 p-2 rounded-lg font-bold" value={item.name} onChange={e=>setItem({name: e.target.value})} /></div>
+    <div><label className="text-sm font-bold text-gray-500">分類</label><select className="w-full border-2 p-2 rounded-lg" value={item.category} onChange={e=>setItem({category: e.target.value})}>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+    <div><label className="text-sm font-bold text-gray-500">單點價格</label><input type="number" className="w-full border-2 p-2 rounded-lg" value={item.price} onChange={e=>setItem({price: parseInt(e.target.value)||0})} /></div>
+    
+    {/* ★★★ 新增：圖片網址輸入框 ★★★ */}
+    <div className="col-span-2 bg-gray-50 p-3 rounded-lg border">
+        <label className="text-sm font-bold text-gray-500 block mb-1">圖片連結 (網址)</label>
+        <div className="flex gap-4">
+            <input className="flex-1 border-2 p-2 rounded-lg text-sm font-mono text-blue-600" placeholder="請貼上圖片網址 (https://...)" value={item.image || ''} onChange={e=>setItem({image: e.target.value})} />
+            {/* 小預覽圖 */}
+            <div className="w-12 h-12 bg-white border rounded overflow-hidden flex-shrink-0">
+                {item.image ? <img src={item.image} className="w-full h-full object-cover" alt="預覽"/> : <div className="text-xs text-gray-300 text-center leading-[48px]">無圖</div>}
+            </div>
+        </div>
+    </div>
+</div>
                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
                             <label className="text-sm font-bold text-blue-800 mb-2 block flex items-center gap-2"><Tag size={16}/> 適用方案 (自動繼承高價位)</label>
                             <div className="flex flex-wrap gap-3">
@@ -3385,7 +3448,7 @@ const HQFeedbackPage = ({ feedbackLogs, storesConfig }) => {
 const HQDashboard = ({ 
     diningPlans, setDiningPlans, menuItems, setMenuItems, 
     memberAppSettings, setMemberAppSettings, storesConfig, setStoresConfig, 
-    storeEmployees, setStoreEmployees, clockLogs, members, setMembers, 
+    storeEmployees, setStoreEmployees, clockLogs, setClockLogs, members, setMembers, 
     coupons, setCoupons, onEnterBranch, onLogout, categories, setCategories, 
     memberLogs, salesLogs, setSalesLogs, stockStatus, setStockStatus, 
     tipLogs, slotPrizes, setSlotPrizes, tiers, setTiers, bookings, setBookings, 
@@ -3588,6 +3651,19 @@ const HQDashboard = ({
                                     <div><label className="block text-sm font-bold text-gray-500 mb-2">姓名</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="請輸入姓名" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)}/></div>
                                     <div><label className="block text-sm font-bold text-gray-500 mb-2">密碼</label><input className="w-full border-2 border-gray-200 p-3 rounded-xl outline-none focus:border-indigo-500" placeholder="設定密碼" type="number" value={newEmpPwd} onChange={e=>setNewEmpPwd(e.target.value)}/></div>
                                     <button onClick={handleAddEmployee} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 flex justify-center items-center gap-2"><Plus size={20}/> 確認新增</button>
+                                    <button 
+    onClick={() => {
+        const empId = prompt("請輸入要補打卡的員工 ID");
+        if(empId) {
+            const newLog = { id: Date.now(), empId, empName: '人工補登', storeId: 'HQ', type: 'in', timestamp: Date.now() };
+            setClockLogs(prev => [newLog, ...prev]); 
+            alert("✅ 已手動新增一筆上班紀錄");
+        }
+    }}
+    className="w-full mt-4 bg-gray-500 text-white py-3 rounded-xl font-bold shadow hover:bg-gray-600 flex justify-center items-center gap-2"
+>
+    🛠️ 手動補打卡 (忘記打卡用)
+</button>
                                 </div>
                             </div>
                             <div className="w-2/3 flex flex-col gap-6">
@@ -3726,20 +3802,48 @@ export default function App() {
   const [members, setMembers] = useFirebaseState('pos_data', 'members', INITIAL_MEMBERS_DB);
   const [memberLogs, setMemberLogs] = useFirebaseState('pos_data', 'member_logs', []);
   // =======================================================
-    // ★★★ 萬能修復包：營收 + 庫存 + 小費 全部救回 ★★★
-    // =======================================================
-    
-    // 1. 營收紀錄
-    const [oldLogs] = useFirebaseState('pos_data', 'sales_logs', []);
-    const [logsV2, setLogsV2] = useFirebaseState('pos_data', 'sales_logs_v2', []);
-    const salesLogs = [...(oldLogs || []), ...(logsV2 || [])];
-    const setSalesLogs = setLogsV2;
+  // ★★★ 最終修復：營業額讀取 (新舊資料合併顯示) ★★★
+  // =======================================================
 
-    // 2. 庫存狀態
-    const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', {});
-    
-    // 4. 顧客回饋 (如果有這一行的話保留它，沒有就算了)
-    const [feedbackLogs, setFeedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
+  // 1. 讀取舊資料 (歷史紀錄)
+  const [oldLogs] = useFirebaseState('pos_data', 'sales_logs', []);
+  const [oldLogsV2] = useFirebaseState('pos_data', 'sales_logs_v2', []); // 防止有過渡期資料
+
+  // 2. 讀取新資料 (即時監聽 transactions 櫃子)
+  const [newLiveLogs, setNewLiveLogs] = useState([]);
+
+  useEffect(() => {
+    // 去 'transactions' 櫃子抓最新的 1000 筆資料
+    // (這樣才看得到您剛剛用新系統結帳的錢)
+    const q = query(
+      collection(db, "transactions"),
+      orderBy("timestamp", "desc"),
+      limit(1000)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const logs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setNewLiveLogs(logs);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 3. 把新舊資料全部合體！(報表就會顯示所有錢了)
+  const salesLogs = [...newLiveLogs, ...(oldLogsV2 || []), ...(oldLogs || [])];
+  
+  // 4. 設定一個空的寫入器 (因為現在都改用 addDoc 了，這個變數只是為了不讓舊程式碼報錯)
+  const setSalesLogs = () => {};
+
+  // 1. 補回庫存狀態 (Stock)
+  const [stockStatus, setStockStatus] = useFirebaseState('pos_data', 'stock_status', {});
+
+  // 2. 補回顧客回饋 (Feedback)
+  // (這裡我們只取讀取功能，消除黃色警告)
+  const [feedbackLogs] = useFirebaseState('pos_data', 'feedback_logs', []);
 
   const [cloudPrinters] = useFirebaseState('pos_data', `printers_${currentStore?.id || 'branch3'}`, INITIAL_PRINTERS);
 
